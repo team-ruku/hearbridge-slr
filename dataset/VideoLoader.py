@@ -1,25 +1,15 @@
-import torch
-from torchvision.transforms import functional
-import io, lintel
+import io
+
+import lintel
 import numpy as np
-from utils.zipreader import ZipReader
+import torch
 from PIL import Image
+from torchvision.transforms import functional
+
+from utils.zipreader import ZipReader
 
 
 def _load_frame_nums_to_4darray(video, frame_nums):
-    """Decodes a specific set of frames from `video` to a 4D numpy array.
-
-    Args:
-        video: Encoded video.
-        dataset: Dataset meta-info, e.g., width and height.
-        frame_nums: Indices of specific frame indices to decode, e.g.,
-            [1, 10, 30, 35] will return four frames: the first, 10th, 30th and
-            35 frames in `video`. Indices must be in strictly increasing order.
-
-    Returns:
-        A numpy array, loaded from the byte array returned by
-        `lintel.loadvid_frame_nums`, containing the specified frames, decoded.
-    """
     decoded_frames, width, height = lintel.loadvid_frame_nums(
         video, frame_nums=frame_nums
     )

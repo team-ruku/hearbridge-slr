@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 
 class S3D_base(nn.Module):
@@ -71,7 +70,7 @@ class S3D_base(nn.Module):
 
     def forward(self, x):
         y = self.base(x)
-        y = F.avg_pool3d(y, (2, y.size(3), y.size(4)), stride=1)
+        y = nn.functional.avg_pool3d(y, (2, y.size(3), y.size(4)), stride=1)
         y = self.fc(y)
         y = y.view(y.size(0), y.size(1), y.size(2))
         logits = torch.mean(y, 2)

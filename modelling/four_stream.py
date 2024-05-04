@@ -1,7 +1,7 @@
 from torch import nn
-import torch.nn.functional as F
-from modelling.two_stream import S3D_two_stream_v2
+
 from modelling.fusion import Lateral_Conn
+from modelling.two_stream import S3D_two_stream_v2
 
 
 class S3D_four_stream(nn.Module):
@@ -161,15 +161,15 @@ class S3D_four_stream(nn.Module):
 
         H, W = x_rgb_high.shape[-2:]
         try:
-            x_rgb_high = F.avg_pool3d(
+            x_rgb_high = nn.functional.avg_pool3d(
                 x_rgb_high, (2, H, W), stride=1
             )  # spatial global average pool
         except:
-            x_rgb_high = F.avg_pool3d(x_rgb_high, (1, H, W), stride=1)
+            x_rgb_high = nn.functional.avg_pool3d(x_rgb_high, (1, H, W), stride=1)
         try:
-            x_rgb_low = F.avg_pool3d(x_rgb_low, (2, H, W), stride=1)
+            x_rgb_low = nn.functional.avg_pool3d(x_rgb_low, (2, H, W), stride=1)
         except:
-            x_rgb_low = F.avg_pool3d(x_rgb_low, (1, H, W), stride=1)
+            x_rgb_low = nn.functional.avg_pool3d(x_rgb_low, (1, H, W), stride=1)
         B, C, T = x_rgb_high.shape[:3]
         x_rgb_high = x_rgb_high.view(B, C, T).permute(0, 2, 1).mean(dim=1)  # B,C
         B, C, T = x_rgb_low.shape[:3]
@@ -177,15 +177,15 @@ class S3D_four_stream(nn.Module):
 
         H, W = x_pose_high.shape[-2:]
         try:
-            x_pose_high = F.avg_pool3d(
+            x_pose_high = nn.functional.avg_pool3d(
                 x_pose_high, (2, H, W), stride=1
             )  # spatial global average pool
         except:
-            x_pose_high = F.avg_pool3d(x_pose_high, (1, H, W), stride=1)
+            x_pose_high = nn.functional.avg_pool3d(x_pose_high, (1, H, W), stride=1)
         try:
-            x_pose_low = F.avg_pool3d(x_pose_low, (2, H, W), stride=1)
+            x_pose_low = nn.functional.avg_pool3d(x_pose_low, (2, H, W), stride=1)
         except:
-            x_pose_low = F.avg_pool3d(x_pose_low, (1, H, W), stride=1)
+            x_pose_low = nn.functional.avg_pool3d(x_pose_low, (1, H, W), stride=1)
         B, C, T = x_pose_high.shape[:3]
         x_pose_high = x_pose_high.view(B, C, T).permute(0, 2, 1).mean(dim=1)  # B,C
         B, C, T = x_pose_low.shape[:3]

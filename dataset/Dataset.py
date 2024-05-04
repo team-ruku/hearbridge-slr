@@ -1,5 +1,8 @@
+import gzip
+import json
+import os
 import pickle
-import json, os, gzip
+
 import numpy as np
 from torch.utils import data
 

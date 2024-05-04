@@ -1,15 +1,19 @@
+import math
+import random
+from copy import deepcopy
+
+import numpy as np
 import torch
+import torchvision
+from torchvision.transforms import functional
+
+from modelling.four_stream import S3D_four_stream
 from modelling.S3D import S3D_backbone
 from modelling.two_stream import S3D_two_stream_v2
-from modelling.four_stream import S3D_four_stream
-from utils.misc import neq_load_customized
-import random, torchvision
 from modelling.Visualhead import SepConvVisualHead
-import numpy as np
-from copy import deepcopy
 from utils.gen_gaussian import gen_gaussian_hmap_op
-import math
 from utils.loss import LabelSmoothCE
+from utils.misc import neq_load_customized
 
 
 class RecognitionNetwork(torch.nn.Module):
@@ -476,34 +480,32 @@ class RecognitionNetwork(torch.nn.Module):
                 elif self.transform_cfg.get("random_resized_crop", True):
                     i, j, h, w = torchvision.transforms.RandomResizedCrop.get_params(
                         img=sgn_videos,
-                        scale=(self.transform_cfg.get("bottom_area", 0.2), 1.0),
-                        ratio=(
+                        scale=[self.transform_cfg.get("bottom_area", 0.2), 1.0],
+                        ratio=[
                             self.transform_cfg.get("aspect_ratio_min", 3.0 / 4),
                             self.transform_cfg.get("aspect_ratio_max", 4.0 / 3),
-                        ),
+                        ],
                     )
                     sgn_videos = self.apply_spatial_ops(
                         sgn_videos,
-                        spatial_ops_func=lambda x: torchvision.transforms.functional.resized_crop(
+                        spatial_ops_func=lambda x: functional.resized_crop(
                             x, i, j, h, w, [rgb_h, rgb_w]
                         ),
                     )
                     if sgn_videos_low is not None:
                         sgn_videos_low = self.apply_spatial_ops(
                             sgn_videos_low,
-                            spatial_ops_func=lambda x: torchvision.transforms.functional.resized_crop(
+                            spatial_ops_func=lambda x: functional.resized_crop(
                                 x, i, j, h, w, [rgb_h, rgb_w]
                             ),
                         )
                 else:
                     i, j, h, w = torchvision.transforms.RandomCrop.get_params(
-                        img=sgn_videos, output_size=[rgb_h, rgb_w]
+                        img=sgn_videos, output_size=(rgb_h, rgb_w)
                     )
                     sgn_videos = self.apply_spatial_ops(
                         sgn_videos,
-                        spatial_ops_func=lambda x: torchvision.transforms.functional.crop(
-                            x, i, j, h, w
-                        ),
+                        spatial_ops_func=lambda x: functional.crop(x, i, j, h, w),
                     )
 
             if sgn_heatmaps != None:
@@ -511,49 +513,45 @@ class RecognitionNetwork(torch.nn.Module):
                     "random_aug", False
                 ):
                     i2, j2, h2, w2 = (
-                        int(i * factor_h),
-                        int(j * factor_w),
-                        int(h * factor_h),
-                        int(w * factor_w),
+                        int(i) * int(factor_h),
+                        int(j) * int(factor_w),
+                        int(h) * int(factor_h),
+                        int(w) * int(factor_w),
                     )
                 else:
                     i2, j2, h2, w2 = (
                         torchvision.transforms.RandomResizedCrop.get_params(
                             img=sgn_heatmaps,
-                            scale=(self.transform_cfg.get("bottom_area", 0.2), 1.0),
-                            ratio=(
+                            scale=[self.transform_cfg.get("bottom_area", 0.2), 1.0],
+                            ratio=[
                                 self.transform_cfg.get("aspect_ratio_min", 3.0 / 4),
                                 self.transform_cfg.get("aspect_ratio_max", 4.0 / 3),
-                            ),
+                            ],
                         )
                     )
                 if self.transform_cfg.get("random_resized_crop", True):
                     sgn_heatmaps = self.apply_spatial_ops(
                         sgn_heatmaps,
-                        spatial_ops_func=lambda x: torchvision.transforms.functional.resized_crop(
+                        spatial_ops_func=lambda x: functional.resized_crop(
                             x, i2, j2, h2, w2, [hm_h, hm_w]
                         ),
                     )
                     if sgn_heatmaps_low is not None:
                         sgn_heatmaps_low = self.apply_spatial_ops(
                             sgn_heatmaps_low,
-                            spatial_ops_func=lambda x: torchvision.transforms.functional.resized_crop(
+                            spatial_ops_func=lambda x: functional.resized_crop(
                                 x, i2, j2, h2, w2, [hm_h, hm_w]
                             ),
                         )
                 else:
                     sgn_heatmaps = self.apply_spatial_ops(
                         sgn_heatmaps,
-                        spatial_ops_func=lambda x: torchvision.transforms.functional.crop(
-                            x, i2, j2, h2, w2
-                        ),
+                        spatial_ops_func=lambda x: functional.crop(x, i2, j2, h2, w2),
                     )
                     # need to resize to 112x112
                     sgn_heatmaps = self.apply_spatial_ops(
                         sgn_heatmaps,
-                        spatial_ops_func=lambda x: torchvision.transforms.functional.resize(
-                            x, [hm_h, hm_w]
-                        ),
+                        spatial_ops_func=lambda x: functional.resize(x, [hm_h, hm_w]),
                     )
 
         else:
@@ -667,9 +665,9 @@ class RecognitionNetwork(torch.nn.Module):
         return mix_a, mix_b, mix_c, mix_d, y_a, y_b, lam, index, do_mixup
 
     def _forward_impl(
-        self, is_train, labels, sgn_videos=None, sgn_keypoints=None, epoch=0, **kwargs
+        self, is_train, labels, sgn_videos=None, sgn_keypoints={}, epoch=0, **kwargs
     ):
-        s3d_outputs = []
+        s3d_outputs = {}
         # Preprocess (Move from data loader)
         with torch.no_grad():
             # 1. generate heatmaps
@@ -681,7 +679,7 @@ class RecognitionNetwork(torch.nn.Module):
             else:
                 sgn_heatmaps = None
 
-            if not "rgb" in self.input_streams:
+            if "rgb" not in self.input_streams:
                 sgn_videos = None
 
             if self.input_streams == ["rgb", "rgb"]:
@@ -723,11 +721,13 @@ class RecognitionNetwork(torch.nn.Module):
                 ip_d=sgn_heatmaps_low,
             )
 
-        if self.input_streams == ["rgb"]:
+        if self.input_streams == ["rgb"] and self.visual_backbone != None:
             s3d_outputs = self.visual_backbone(sgn_videos=sgn_videos)
-        elif self.input_streams == ["keypoint"]:
+        elif (
+            self.input_streams == ["keypoint"] and self.visual_backbone_keypoint != None
+        ):
             s3d_outputs = self.visual_backbone_keypoint(sgn_videos=sgn_heatmaps)
-        elif len(self.input_streams) == 2:
+        elif len(self.input_streams) == 2 and self.visual_backbone_twostream != None:
             s3d_outputs = self.visual_backbone_twostream(
                 x_rgb=sgn_videos, x_pose=sgn_heatmaps
             )
@@ -739,29 +739,33 @@ class RecognitionNetwork(torch.nn.Module):
         if self.fuse_method is None:
             assert len(self.input_streams) == 1, self.input_streams
             assert self.cfg["pyramid"]["rgb"] == self.cfg["pyramid"]["pose"]
+
             if "rgb" in self.input_streams:
+                assert self.visual_head != None
                 head_outputs = self.visual_head(
                     x=s3d_outputs["sgn_feature"], labels=labels
                 )
-
             elif "keypoint" in self.input_streams:
+                assert self.visual_head_keypoint != None
                 head_outputs = self.visual_head_keypoint(
                     x=s3d_outputs["sgn_feature"], labels=labels
                 )
-
             else:
                 raise ValueError
             outputs = {**head_outputs}
 
         elif "sephead" in self.fuse_method or "triplehead" in self.fuse_method:
             assert len(self.input_streams) == 2
+
             # rgb
+            assert self.visual_head != None
             head_outputs_rgb = self.visual_head(
                 x=s3d_outputs["rgb_fea_lst"][-1], labels=labels
             )
             head_rgb_input = s3d_outputs["rgb_fea_lst"][-1]  # B,C,T,H,W
 
             # keypoint
+            assert self.visual_head_keypoint != None
             head_keypoint_input = s3d_outputs["pose_fea_lst"][-1]
             head_outputs_keypoint = self.visual_head_keypoint(
                 x=s3d_outputs["pose_fea_lst"][-1], labels=labels
@@ -1026,7 +1030,7 @@ class RecognitionNetwork(torch.nn.Module):
         return outputs
 
     def forward(
-        self, is_train, labels, sgn_videos=None, sgn_keypoints=None, epoch=0, **kwargs
+        self, is_train, labels, sgn_videos=[], sgn_keypoints=[], epoch=0, **kwargs
     ):
         if len(sgn_videos) == 1:
             return self._forward_impl(

@@ -26,7 +26,7 @@ def gen_gaussian_hmap_op(
     confs = coords[..., 2]  # T, C
 
     # if not limb:
-    y, x = torch.meshgrid(torch.arange(map_h), torch.arange(map_w))
+    y, x = torch.meshgrid(torch.arange(map_h), torch.arange(map_w), indexing="ij")
     coords = torch.stack([coords_y, coords_x], dim=0)
     grid = torch.stack([y, x], dim=0).to(coords.device)  # [2,H,W]
     grid = grid.unsqueeze(0).unsqueeze(0).expand(hmap_num, T, -1, -1, -1)  # [C,T,2,H,W]

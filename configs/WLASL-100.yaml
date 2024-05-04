@@ -11,7 +11,7 @@ data:
     - pose
     - mouth_half
     - hand
-  zip_file: WLASL-2000.zip
+  zip_file: WLASL.zip
   word_emb_file: wlasl_word_embeddings.pkl
   train: train.pkl
   dev: dev.pkl

@@ -1,13 +1,16 @@
-import torch
-import os, json, argparse
-import numpy as np
+import argparse
+import json
+import os
 from collections import defaultdict
 
+import numpy as np
+import torch
+
+from dataset.Dataloader import build_dataloader
 from dataset.Dataset import build_dataset
 from modelling.model import build_model
-from dataset.Dataloader import build_dataloader
 from utils.metrics import compute_accuracy
-from utils.misc import load_config, set_seed, neq_load_customized, move_to_device
+from utils.misc import load_config, move_to_device, neq_load_customized, set_seed
 
 
 def evaluation(
@@ -84,7 +87,7 @@ def evaluation(
                     ref = batch["labels"][i].item()
                     results[name]["ref"] = ref
 
-        print()
+            print(f"{step + 1} / {len(dataloader)}")
 
     for k, v in val_stat.items():
         if "_loss" in k:
@@ -95,9 +98,7 @@ def evaluation(
     )
 
     print(
-        "-------------------------Evaluation Finished-------------------------".format(
-            global_step, len(dataloader.dataset)
-        )
+        "-------------------------Evaluation Finished-------------------------".format()
     )
     return per_ins_stat_dict, per_cls_stat_dict, results
 
@@ -126,7 +127,6 @@ def sync_results(per_ins_stat_dict, per_cls_stat_dict):
             )
         )
 
-    # one class missing in the test set of WLASL_2000
     for k, per_cls_stat in per_cls_stat_dict.items():
         top1_t, top1_f, top5_t, top5_f, top10_t, top10_f = per_cls_stat
         evaluation_results[f"{k}per_cls_top_1"] = np.nanmean(
@@ -201,7 +201,7 @@ if __name__ == "__main__":
         print(f"{load_model_path} does not exist")
         epoch, global_step = 0, 0
 
-    dataloader, sampler = build_dataloader(cfg, "test", is_train=False)
+    dataloader, sampler = build_dataloader(cfg, "dev", is_train=False)
     per_ins_stat, per_cls_stat, _ = evaluation(
         model=model,
         dataloader=dataloader,

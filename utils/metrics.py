@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 
 
 def compute_accuracy(
@@ -24,12 +24,8 @@ def compute_accuracy(
                 continue
 
             res = results[name]
-            # if len(cfg['data']['input_streams']) == 1:
-            #     hyp_lst = res['hyp']
-            # elif len(cfg['data']['input_streams']) > 1:
-            #     hyp_lst = res['ensemble_last_hyp']
             hyp = res[f"{k}hyp"]
-            # update hyp list
+
             if len(effective_label_idx) > 0:
                 hyp_lst = []
                 for h in hyp:

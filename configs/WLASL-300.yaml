@@ -6,17 +6,17 @@ data:
     - keypoint
     - rgb
     - rgb
-  keypoint_file: ../data/wlasl_2000/keypoints_hrnet_dark_coco_wholebody.pkl
+  keypoint_file: keypoints_hrnet_dark_coco_wholebody.pkl
   use_keypoints:
     - pose
     - mouth_half
     - hand
-  zip_file: ../data/wlasl_2000/WLASL2000.zip
+  zip_file: WLASL.zip
   word_emb_file: ../data/wlasl_2000/wlasl_word_embeddings.pkl
-  train: ../data/wlasl_2000/train.pkl
-  dev: ../data/wlasl_2000/dev.pkl
-  test: ../data/wlasl_2000/test.pkl
-  dataset_name: WLASL_300
+  train: train.pkl
+  dev: dev.pkl
+  test: test.pkl
+  dataset_name: WLASL-300
   level: word #word or char
   txt_lowercase: true
   num_output_frames: 64

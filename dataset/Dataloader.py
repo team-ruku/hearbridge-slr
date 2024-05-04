@@ -1,10 +1,11 @@
+import os
+from functools import partial
+
 import torch
 from torch.utils import data
-from functools import partial
-import os
 
-from dataset.VideoLoader import load_batch_video
 from dataset.Dataset import build_dataset
+from dataset.VideoLoader import load_batch_video
 
 
 def collate_fn_(batch, data_cfg, is_train, vocab, name2keypoint, word_emb_tab):

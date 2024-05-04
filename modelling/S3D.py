@@ -1,5 +1,6 @@
-import torch, glob, os
-import torch.nn as nn
+import torch
+from torch import nn
+import glob, os
 from utils.misc import neq_load_customized
 from modelling.S3D_base import S3D_base, BasicConv3d
 
@@ -85,7 +86,6 @@ class S3D_backbone(torch.nn.Module):
                     )
                 )
 
-        self.pyramid = None
         self.num_levels = 3
 
     def load_s3d_model_weight(self, model_path):
@@ -149,8 +149,5 @@ class S3D_backbone(torch.nn.Module):
                 # first block is too shallow, drop it
                 fea_lst.append(sgn_videos)
                 # print(sgn_videos.shape)
-
-        if self.pyramid is not None:
-            fea_lst, _ = self.pyramid(fea_lst)
 
         return {"sgn_feature": fea_lst[-1], "fea_lst": fea_lst}

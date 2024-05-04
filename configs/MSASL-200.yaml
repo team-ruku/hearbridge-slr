@@ -6,17 +6,17 @@ data:
     - keypoint
     - rgb
     - rgb
-  keypoint_file: ../data/msasl/keypoints_hrnet_dark_coco_wholebody.pkl
+  keypoint_file: keypoints_hrnet_dark_coco_wholebody.pkl
   use_keypoints:
     - pose
     - mouth_half
     - hand
-  zip_file: ../data/msasl/msasl_frames1.zip
+  zip_file: MSASL.zip
   word_emb_file: ../data/msasl/msasl_word_embeddings_fasttext.pkl
-  train: ../data/msasl/train.pkl
-  dev: ../data/msasl/dev.pkl
-  test: ../data/msasl/test.pkl
-  dataset_name: MSASL_200
+  train: train.pkl
+  dev: dev.pkl
+  test: test.pkl
+  dataset_name: MSASL-200
   level: word #word or char
   txt_lowercase: true
   num_output_frames: 64

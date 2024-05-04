@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class SepConvVisualHead(torch.nn.Module):
@@ -30,8 +29,8 @@ class SepConvVisualHead(torch.nn.Module):
             assert self.word_emb_tab is not None and self.word_emb_dim > 0
             self.word_emb_tab.requires_grad = False
             self.word_emb_sim = torch.matmul(
-                F.normalize(self.word_emb_tab, dim=-1),
-                F.normalize(self.word_emb_tab, dim=-1).T,
+                nn.functional.normalize(self.word_emb_tab, dim=-1),
+                nn.functional.normalize(self.word_emb_tab, dim=-1).T,
             )
             self.word_emb_mapper = nn.Linear(self.word_emb_dim, input_size)
             if "dual" in self.contras_setting:
@@ -49,9 +48,9 @@ class SepConvVisualHead(torch.nn.Module):
         self.load_state_dict(load_dict, strict=True)
         print(f"Load Visual Head from pretrained ckpt {pretrained_ckpt}")
 
-    def forward(self, x, labels=None):
+    def forward(self, x, labels):
         if x.ndim > 3:
-            x = F.avg_pool3d(
+            x = nn.functional.avg_pool3d(
                 x, (2, x.size(3), x.size(4)), stride=1
             )  # spatial global average pool
             x = x.view(x.size(0), x.size(1), x.size(2)).permute(0, 2, 1)  # B,T,C

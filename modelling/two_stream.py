@@ -1,5 +1,5 @@
 from torch import nn
-import torch.nn.functional as F
+
 from modelling.fusion import Lateral_Conn
 from modelling.S3D import S3D_backbone
 
@@ -163,22 +163,22 @@ class S3D_two_stream_v2(nn.Module):
         for i in range(len(rgb_fea_lst)):
             H, W = rgb_fea_lst[i].shape[-2:]
             try:
-                rgb_fea_lst[i] = F.avg_pool3d(
+                rgb_fea_lst[i] = nn.functional.avg_pool3d(
                     rgb_fea_lst[i], (2, H, W), stride=1
                 )  # spatial global average pool
             except:
-                rgb_fea_lst[i] = F.avg_pool3d(
+                rgb_fea_lst[i] = nn.functional.avg_pool3d(
                     rgb_fea_lst[i], (1, H, W), stride=1
                 )  # spatial global average pool
             B, C, T = rgb_fea_lst[i].shape[:3]
             rgb_fea_lst[i] = rgb_fea_lst[i].view(B, C, T).permute(0, 2, 1)  # B,T,C
             H, W = pose_fea_lst[i].shape[-2:]
             try:
-                pose_fea_lst[i] = F.avg_pool3d(
+                pose_fea_lst[i] = nn.functional.avg_pool3d(
                     pose_fea_lst[i], (2, H, W), stride=1
                 )  # spatial global average pool
             except:
-                pose_fea_lst[i] = F.avg_pool3d(
+                pose_fea_lst[i] = nn.functional.avg_pool3d(
                     pose_fea_lst[i], (1, H, W), stride=1
                 )  # spatial global average pool
             B, C, T = pose_fea_lst[i].shape[:3]

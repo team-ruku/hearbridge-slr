@@ -1,13 +1,8 @@
-import torch as t
-import torch.nn as nn
-import torch.nn.functional as F
+import torch
+from torch import nn
 
 
 class LabelSmoothCE(nn.Module):
-    """
-    This is the autograd version, you can also try the LabelSmoothSoftmaxCEV2 that uses derived gradients
-    """
-
     def __init__(
         self,
         lb_smooth=0.1,
@@ -25,8 +20,9 @@ class LabelSmoothCE(nn.Module):
         self.log_softmax = nn.LogSoftmax(dim=-1)
         self.word_emb_sim = None
         if word_emb_tab is not None:
-            self.word_emb_sim = t.matmul(
-                F.normalize(word_emb_tab, dim=-1), F.normalize(word_emb_tab, dim=-1).T
+            self.word_emb_sim = torch.matmul(
+                nn.functional.normalize(word_emb_tab, dim=-1),
+                nn.functional.normalize(word_emb_tab, dim=-1).T,
             )
             self.norm_type = norm_type
             self.temp = temp
@@ -35,16 +31,9 @@ class LabelSmoothCE(nn.Module):
     def forward(
         self, logits, label, topk_idx=None, mixup_lam=None, y_a=None, y_b=None, **kwargs
     ):
-        """
-        Same usage method as nn.CrossEntropyLoss:
-            >>> criteria = LabelSmoothSoftmaxCEV1()
-            >>> logits = torch.randn(8, 19, 384, 384) # nchw, float/half
-            >>> lbs = torch.randint(0, 19, (8, 384, 384)) # nhw, int64_t
-            >>> loss = criteria(logits, lbs)
-        """
         # overcome ignored label
         logits = logits.float()  # use fp32 to avoid nan
-        with t.no_grad():
+        with torch.no_grad():
             # print(self.variant)
             if self.variant is None:
                 num_classes = logits.size(1)
@@ -56,21 +45,21 @@ class LabelSmoothCE(nn.Module):
                     num_classes - 1
                 )
                 lb_one_hot = (
-                    t.empty_like(logits)
+                    torch.empty_like(logits)
                     .fill_(lb_neg)
                     .scatter_(1, label.unsqueeze(1), lb_pos)
                     .detach()
                 )
 
             elif "dual" in self.variant:
-                # assert topk_idx is not None
+                assert topk_idx != None and y_a != None and y_b != None
                 B, K, N = logits.shape
                 label = label.clone().detach()
 
-                lb_one_hot = t.zeros(B * K, N).to(logits.device)
+                lb_one_hot = torch.zeros(B * K, N).to(logits.device)
                 label_exp = label.unsqueeze(1).expand(-1, K).reshape(-1)
                 topk_idx = topk_idx.view(-1)
-                idx = t.arange(lb_one_hot.shape[0])
+                idx = torch.arange(lb_one_hot.shape[0])
 
                 if mixup_lam is None:
                     lb_one_hot[idx, label_exp] = 0.5
@@ -90,14 +79,14 @@ class LabelSmoothCE(nn.Module):
                 lb_one_hot = self.word_emb_sim[label]
                 ignore = label.eq(self.lb_ignore)
                 n_valid = ignore.eq(0).sum()
-                idx = t.arange(label.shape[0])
+                idx = torch.arange(label.shape[0])
                 if self.norm_type == "l1":
                     lb_one_hot[idx, label] = 0.0
-                    lb_one_hot = F.normalize(lb_one_hot, p=1.0, dim=-1)
+                    lb_one_hot = nn.functional.normalize(lb_one_hot, p=1.0, dim=-1)
                 elif self.norm_type == "softmax":
                     lb_one_hot[idx, label] = float("-inf")
                     lb_one_hot /= self.temp
-                    lb_one_hot = F.softmax(lb_one_hot, dim=-1)
+                    lb_one_hot = nn.functional.softmax(lb_one_hot, dim=-1)
                 lb_one_hot *= self.lb_smooth
                 lb_one_hot[idx, label] = 1.0 - self.lb_smooth
                 lb_one_hot = lb_one_hot.detach()
@@ -106,7 +95,7 @@ class LabelSmoothCE(nn.Module):
                 raise ValueError
 
         logs = self.log_softmax(logits)
-        loss = -t.sum(logs * lb_one_hot, dim=-1)
+        loss = -torch.sum(logs * lb_one_hot, dim=-1)
 
         if self.reduction == "mean":
             loss = loss.sum() / n_valid

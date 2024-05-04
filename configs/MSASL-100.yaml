@@ -11,7 +11,7 @@ data:
     - pose
     - mouth_half
     - hand
-  zip_file: msasl_frames1.zip
+  zip_file: MSASL.zip
   word_emb_file: msasl_word_embeddings_fasttext.pkl
   train: train.pkl
   dev: dev.pkl

@@ -1,5 +1,6 @@
-from modelling.recognition import RecognitionNetwork
 import torch
+
+from modelling.recognition import RecognitionNetwork
 
 
 class SignLanguageModel(torch.nn.Module):
@@ -25,6 +26,7 @@ class SignLanguageModel(torch.nn.Module):
                 self.recognition_network.visual_backbone_keypoint.get_frozen_layers()
             )
         if model_cfg["RecognitionNetwork"].get("only_tune_new_layer", False):
+            assert self.recognition_network.visual_backbone_twostream != None
             self.frozen_modules.extend(
                 [
                     self.recognition_network.visual_backbone_twostream.rgb_stream,

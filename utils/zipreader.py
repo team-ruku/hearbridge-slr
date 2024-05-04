@@ -2,14 +2,7 @@ import os
 import zipfile
 
 
-def is_zip_path(img_or_path):
-    """judge if this is a zip path"""
-    return ".zip@" in img_or_path
-
-
 class ZipReader(object):
-    """A class to read zipped files"""
-
     zip_bank = dict()
 
     def __init__(self):

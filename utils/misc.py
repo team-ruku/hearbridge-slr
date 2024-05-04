@@ -1,7 +1,9 @@
-import os, random
-import yaml
-import torch
+import os
+import random
+
 import numpy as np
+import torch
+import yaml
 
 
 def load_config(path="configs/default.yaml") -> dict:
