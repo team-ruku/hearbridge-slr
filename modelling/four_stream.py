@@ -164,11 +164,11 @@ class S3D_four_stream(nn.Module):
             x_rgb_high = nn.functional.avg_pool3d(
                 x_rgb_high, (2, H, W), stride=1
             )  # spatial global average pool
-        except:
+        except Exception as _:
             x_rgb_high = nn.functional.avg_pool3d(x_rgb_high, (1, H, W), stride=1)
         try:
             x_rgb_low = nn.functional.avg_pool3d(x_rgb_low, (2, H, W), stride=1)
-        except:
+        except Exception as _:
             x_rgb_low = nn.functional.avg_pool3d(x_rgb_low, (1, H, W), stride=1)
         B, C, T = x_rgb_high.shape[:3]
         x_rgb_high = x_rgb_high.view(B, C, T).permute(0, 2, 1).mean(dim=1)  # B,C
@@ -180,11 +180,11 @@ class S3D_four_stream(nn.Module):
             x_pose_high = nn.functional.avg_pool3d(
                 x_pose_high, (2, H, W), stride=1
             )  # spatial global average pool
-        except:
+        except Exception as _:
             x_pose_high = nn.functional.avg_pool3d(x_pose_high, (1, H, W), stride=1)
         try:
             x_pose_low = nn.functional.avg_pool3d(x_pose_low, (2, H, W), stride=1)
-        except:
+        except Exception as _:
             x_pose_low = nn.functional.avg_pool3d(x_pose_low, (1, H, W), stride=1)
         B, C, T = x_pose_high.shape[:3]
         x_pose_high = x_pose_high.view(B, C, T).permute(0, 2, 1).mean(dim=1)  # B,C

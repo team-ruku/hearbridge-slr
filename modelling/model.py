@@ -17,16 +17,16 @@ class SignLanguageModel(torch.nn.Module):
             word_emb_tab=word_emb_tab,
         )
 
-        if self.recognition_network.visual_backbone != None:
+        if self.recognition_network.visual_backbone is not None:
             self.frozen_modules.extend(
                 self.recognition_network.visual_backbone.get_frozen_layers()
             )
-        if self.recognition_network.visual_backbone_keypoint != None:
+        if self.recognition_network.visual_backbone_keypoint is not None:
             self.frozen_modules.extend(
                 self.recognition_network.visual_backbone_keypoint.get_frozen_layers()
             )
         if model_cfg["RecognitionNetwork"].get("only_tune_new_layer", False):
-            assert self.recognition_network.visual_backbone_twostream != None
+            assert self.recognition_network.visual_backbone_twostream is not None
             self.frozen_modules.extend(
                 [
                     self.recognition_network.visual_backbone_twostream.rgb_stream,
@@ -36,7 +36,7 @@ class SignLanguageModel(torch.nn.Module):
                 ]
             )
             for name, params in self.recognition_network.named_parameters():
-                if not "unified_logits_fc" in name and not "lateral" in name.lower():
+                if "unified_logits_fc" not in name and "lateral" not in name.lower():
                     params.requires_grad = False
 
     def forward(self, is_train, labels, sgn_videos, sgn_keypoints, epoch, **kwargs):

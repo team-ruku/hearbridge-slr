@@ -13,7 +13,7 @@ def gen_gaussian_hmap_op(
 
     T, hmap_num = coords.shape[:2]
     raw_h, raw_w = raw_size  # 260,210
-    if map_size == None:
+    if map_size is None:
         map_h, map_w = raw_h, raw_w
         factor_h, factor_w = 1, 1
     else:

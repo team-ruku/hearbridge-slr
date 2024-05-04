@@ -37,7 +37,7 @@ def read_jpg(zip_file, dataset_name, decoded_frames, seq_len, img_dir):
             img_path = "{}@{}{:04d}.png".format(zip_file, img_dir, f)
         try:
             img = read_img(img_path)
-        except:
+        except Exception as _:
             # print('broken img: ', img_path)
             img = np.array(video_arrays[-1])
         video_arrays.append(img)  # H,W,C
@@ -208,7 +208,7 @@ def load_batch_video(
         video /= 255
         batch_videos.append(video)  # wo transformed!!
 
-        if name2keypoint != None:
+        if name2keypoint is not None:
             kps = name2keypoint[name][selected_index, :, :]
             if pad is not None:
                 kps = pad_array(kps, pad)
@@ -221,7 +221,7 @@ def load_batch_video(
         0, 1, 4, 2, 3
     )  # B,T,C,H,W for spatial augmentation
 
-    if name2keypoint != None:
+    if name2keypoint is not None:
         batch_keypoints = torch.stack(batch_keypoints, dim=0)  # B,T,N,3
     else:
         batch_keypoints = None

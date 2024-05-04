@@ -166,7 +166,7 @@ class S3D_two_stream_v2(nn.Module):
                 rgb_fea_lst[i] = nn.functional.avg_pool3d(
                     rgb_fea_lst[i], (2, H, W), stride=1
                 )  # spatial global average pool
-            except:
+            except Exception as _:
                 rgb_fea_lst[i] = nn.functional.avg_pool3d(
                     rgb_fea_lst[i], (1, H, W), stride=1
                 )  # spatial global average pool
@@ -177,7 +177,7 @@ class S3D_two_stream_v2(nn.Module):
                 pose_fea_lst[i] = nn.functional.avg_pool3d(
                     pose_fea_lst[i], (2, H, W), stride=1
                 )  # spatial global average pool
-            except:
+            except Exception as _:
                 pose_fea_lst[i] = nn.functional.avg_pool3d(
                     pose_fea_lst[i], (1, H, W), stride=1
                 )  # spatial global average pool

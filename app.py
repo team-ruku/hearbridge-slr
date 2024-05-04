@@ -21,7 +21,7 @@ def evaluation(
     global_step=None,
 ):
     vocab = dataloader.dataset.vocab
-    split = dataloader.dataset.split
+    # split = dataloader.dataset.split
     cls_num = len(vocab)
 
     word_emb_tab = []
@@ -32,13 +32,13 @@ def evaluation(
     else:
         word_emb_tab = None
 
-    if epoch != None:
+    if epoch is not None:
         print(
             "------------------Evaluation epoch={} {} examples #={}---------------------".format(
                 epoch, dataloader.dataset.split, len(dataloader.dataset)
             )
         )
-    elif global_step != None:
+    elif global_step is not None:
         print(
             "------------------Evaluation global step={} {} examples #={}------------------".format(
                 global_step, dataloader.dataset.split, len(dataloader.dataset)
@@ -67,7 +67,7 @@ def evaluation(
 
             # rgb/keypoint/fuse/ensemble_last_logits
             for k, gls_logits in forward_output.items():
-                if pred_src not in k or gls_logits == None:
+                if pred_src not in k or gls_logits is None:
                     continue
 
                 logits_name = k.replace(pred_src, "")

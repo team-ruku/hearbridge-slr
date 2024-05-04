@@ -52,7 +52,7 @@ class LabelSmoothCE(nn.Module):
                 )
 
             elif "dual" in self.variant:
-                assert topk_idx != None and y_a != None and y_b != None
+                assert topk_idx is not None and y_a is not None and y_b is not None
                 B, K, N = logits.shape
                 label = label.clone().detach()
 

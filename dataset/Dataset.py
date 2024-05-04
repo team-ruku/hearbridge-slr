@@ -81,7 +81,7 @@ class ISLRDataset(data.Dataset):
         try:
             with open(self.annotation_file, "rb") as f:
                 annotation = pickle.load(f)
-        except:
+        except Exception as _:
             with gzip.open(self.annotation_file, "rb") as f:
                 annotation = pickle.load(f)
 

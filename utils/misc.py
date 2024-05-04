@@ -82,10 +82,10 @@ def neq_load_customized(model, pretrained_dict, verbose=True):
 
 def move_to_device(batch, device):
     for k, v in batch.items():
-        if type(v) == dict:
+        if isinstance(v, dict):
             batch[k] = move_to_device(v, device)
-        elif type(v) == torch.Tensor:
+        elif isinstance(v, torch.Tensor):
             batch[k] = v.to(device)
-        elif type(v) == list and type(v[0]) == torch.Tensor:
+        elif isinstance(v, list) and type(v[0]) == torch.Tensor:
             batch[k] = [e.to(device) for e in v]
     return batch

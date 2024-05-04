@@ -215,7 +215,10 @@ class RecognitionNetwork(torch.nn.Module):
                     ] = v
                 if "visual_head" in k and "visual_head_remain" not in k:
                     head_dict[k.replace("recognition_network.visual_head.", "")] = v
-            if self.visual_backbone != None and self.visual_backbone_twostream == None:
+            if (
+                self.visual_backbone is not None
+                and self.visual_backbone_twostream is None
+            ):
                 neq_load_customized(self.visual_backbone, backbone_dict, verbose=True)
                 neq_load_customized(self.visual_head, head_dict, verbose=True)
                 print(
@@ -224,7 +227,8 @@ class RecognitionNetwork(torch.nn.Module):
                     )
                 )
             elif (
-                self.visual_backbone == None and self.visual_backbone_twostream != None
+                self.visual_backbone is None
+                and self.visual_backbone_twostream is not None
             ):
                 neq_load_customized(
                     self.visual_backbone_twostream.rgb_stream,
@@ -264,8 +268,8 @@ class RecognitionNetwork(torch.nn.Module):
                         )
                     ] = v
             if (
-                self.visual_backbone_keypoint != None
-                and self.visual_backbone_twostream == None
+                self.visual_backbone_keypoint is not None
+                and self.visual_backbone_twostream is None
             ):
                 neq_load_customized(
                     self.visual_backbone_keypoint, backbone_dict, verbose=True
@@ -277,8 +281,8 @@ class RecognitionNetwork(torch.nn.Module):
                     )
                 )
             elif (
-                self.visual_backbone_keypoint == None
-                and self.visual_backbone_twostream != None
+                self.visual_backbone_keypoint is None
+                and self.visual_backbone_twostream is not None
             ):
                 neq_load_customized(
                     self.visual_backbone_twostream.pose_stream,
@@ -352,11 +356,11 @@ class RecognitionNetwork(torch.nn.Module):
                 print("Load visual_head fuse low")
 
         label_smooth = cfg.get("label_smooth", 0.0)
-        if type(label_smooth) == float and label_smooth > 0:
+        if isinstance(label_smooth, float) and label_smooth > 0:
             self.recognition_loss_func = LabelSmoothCE(
                 lb_smooth=label_smooth, reduction="mean"
             )
-        elif type(label_smooth) == str and "word_emb_sim" in label_smooth:
+        elif isinstance(label_smooth, str) and "word_emb_sim" in label_smooth:
             temp, lb_smooth, norm_type = (
                 float(label_smooth.split("_")[-1]),
                 float(label_smooth.split("_")[-2]),
@@ -439,10 +443,10 @@ class RecognitionNetwork(torch.nn.Module):
         rgb_h, rgb_w = self.transform_cfg.get("img_size", 224), self.transform_cfg.get(
             "img_size", 224
         )
-        if sgn_heatmaps != None:
+        if sgn_heatmaps is not None:
             hm_h, hm_w = self.heatmap_cfg["input_size"], self.heatmap_cfg["input_size"]
             # factor_h, factor_w= hm_h/rgb_h, hm_w/rgb_w ！！
-            if sgn_videos != None:
+            if sgn_videos is not None:
                 hm_h0, hm_w0 = (
                     sgn_heatmaps.shape[-2],
                     sgn_heatmaps.shape[-1],
@@ -450,7 +454,7 @@ class RecognitionNetwork(torch.nn.Module):
                 B, T, C, rgb_h0, rgb_w0 = sgn_videos.shape  # B,T,C,H,W
                 factor_h, factor_w = hm_h0 / rgb_h0, hm_w0 / rgb_w0  # ！！
         if is_train:
-            if sgn_videos != None:
+            if sgn_videos is not None:
                 if (
                     self.transform_cfg.get("color_jitter", False)
                     and random.random() < 0.3
@@ -508,8 +512,8 @@ class RecognitionNetwork(torch.nn.Module):
                         spatial_ops_func=lambda x: functional.crop(x, i, j, h, w),
                     )
 
-            if sgn_heatmaps != None:
-                if sgn_videos != None and not self.transform_cfg.get(
+            if sgn_heatmaps is not None:
+                if sgn_videos is not None and not self.transform_cfg.get(
                     "random_aug", False
                 ):
                     i2, j2, h2, w2 = (
@@ -555,9 +559,9 @@ class RecognitionNetwork(torch.nn.Module):
                     )
 
         else:
-            if sgn_videos != None:
+            if sgn_videos is not None:
                 spatial_ops = []
-                if self.transform_cfg.get("center_crop", False) == True:
+                if self.transform_cfg.get("center_crop", False) is True:
                     spatial_ops.append(
                         torchvision.transforms.CenterCrop(
                             self.transform_cfg["center_crop_size"]
@@ -568,9 +572,9 @@ class RecognitionNetwork(torch.nn.Module):
                 sgn_videos = self.apply_spatial_ops(sgn_videos, spatial_ops)
                 if sgn_videos_low is not None:
                     sgn_videos_low = self.apply_spatial_ops(sgn_videos_low, spatial_ops)
-            if sgn_heatmaps != None:
+            if sgn_heatmaps is not None:
                 spatial_ops = []
-                if self.transform_cfg.get("center_crop", False) == True:
+                if self.transform_cfg.get("center_crop", False) is True:
                     spatial_ops.append(
                         torchvision.transforms.CenterCrop(
                             [
@@ -587,7 +591,7 @@ class RecognitionNetwork(torch.nn.Module):
                         sgn_heatmaps_low, spatial_ops
                     )
 
-        if sgn_videos != None:
+        if sgn_videos is not None:
             # convert to BGR for S3D
             if (
                 "r3d" not in self.cfg
@@ -598,7 +602,7 @@ class RecognitionNetwork(torch.nn.Module):
             sgn_videos = sgn_videos.float()
             sgn_videos = (sgn_videos - 0.5) / 0.5
             sgn_videos = sgn_videos.permute(0, 2, 1, 3, 4).float()  # B C T H W
-        if sgn_videos_low != None:
+        if sgn_videos_low is not None:
             # convert to BGR for S3D
             if (
                 "r3d" not in self.cfg
@@ -609,13 +613,13 @@ class RecognitionNetwork(torch.nn.Module):
             sgn_videos_low = sgn_videos_low.float()
             sgn_videos_low = (sgn_videos_low - 0.5) / 0.5
             sgn_videos_low = sgn_videos_low.permute(0, 2, 1, 3, 4).float()  # B C T H W
-        if sgn_heatmaps != None:
+        if sgn_heatmaps is not None:
             sgn_heatmaps = (sgn_heatmaps - 0.5) / 0.5
             if sgn_heatmaps.ndim > 4:
                 sgn_heatmaps = sgn_heatmaps.permute(0, 2, 1, 3, 4).float()
             else:
                 sgn_heatmaps = sgn_heatmaps.float()
-        if sgn_heatmaps_low != None:
+        if sgn_heatmaps_low is not None:
             sgn_heatmaps_low = (sgn_heatmaps_low - 0.5) / 0.5
             if sgn_heatmaps_low.ndim > 4:
                 sgn_heatmaps_low = sgn_heatmaps_low.permute(0, 2, 1, 3, 4).float()
@@ -672,7 +676,7 @@ class RecognitionNetwork(torch.nn.Module):
         with torch.no_grad():
             # 1. generate heatmaps
             if "keypoint" in self.input_streams:
-                assert sgn_keypoints != None
+                assert sgn_keypoints is not None
                 sgn_heatmaps = self.generate_batch_heatmap(
                     sgn_keypoints, self.heatmap_cfg
                 )  # B,T,N,H,W or B,N,H,W
@@ -721,13 +725,16 @@ class RecognitionNetwork(torch.nn.Module):
                 ip_d=sgn_heatmaps_low,
             )
 
-        if self.input_streams == ["rgb"] and self.visual_backbone != None:
+        if self.input_streams == ["rgb"] and self.visual_backbone is not None:
             s3d_outputs = self.visual_backbone(sgn_videos=sgn_videos)
         elif (
-            self.input_streams == ["keypoint"] and self.visual_backbone_keypoint != None
+            self.input_streams == ["keypoint"]
+            and self.visual_backbone_keypoint is not None
         ):
             s3d_outputs = self.visual_backbone_keypoint(sgn_videos=sgn_heatmaps)
-        elif len(self.input_streams) == 2 and self.visual_backbone_twostream != None:
+        elif (
+            len(self.input_streams) == 2 and self.visual_backbone_twostream is not None
+        ):
             s3d_outputs = self.visual_backbone_twostream(
                 x_rgb=sgn_videos, x_pose=sgn_heatmaps
             )
@@ -741,12 +748,12 @@ class RecognitionNetwork(torch.nn.Module):
             assert self.cfg["pyramid"]["rgb"] == self.cfg["pyramid"]["pose"]
 
             if "rgb" in self.input_streams:
-                assert self.visual_head != None
+                assert self.visual_head is not None
                 head_outputs = self.visual_head(
                     x=s3d_outputs["sgn_feature"], labels=labels
                 )
             elif "keypoint" in self.input_streams:
-                assert self.visual_head_keypoint != None
+                assert self.visual_head_keypoint is not None
                 head_outputs = self.visual_head_keypoint(
                     x=s3d_outputs["sgn_feature"], labels=labels
                 )
@@ -758,14 +765,14 @@ class RecognitionNetwork(torch.nn.Module):
             assert len(self.input_streams) == 2
 
             # rgb
-            assert self.visual_head != None
+            assert self.visual_head is not None
             head_outputs_rgb = self.visual_head(
                 x=s3d_outputs["rgb_fea_lst"][-1], labels=labels
             )
             head_rgb_input = s3d_outputs["rgb_fea_lst"][-1]  # B,C,T,H,W
 
             # keypoint
-            assert self.visual_head_keypoint != None
+            assert self.visual_head_keypoint is not None
             head_keypoint_input = s3d_outputs["pose_fea_lst"][-1]
             head_outputs_keypoint = self.visual_head_keypoint(
                 x=s3d_outputs["pose_fea_lst"][-1], labels=labels
@@ -785,7 +792,7 @@ class RecognitionNetwork(torch.nn.Module):
             }
 
             if "triplehead" in self.fuse_method:
-                assert self.visual_head_fuse != None
+                assert self.visual_head_fuse is not None
                 if self.input_streams == ["rgb", "rgb"]:
                     fused_sgn_features = torch.cat(
                         [head_rgb_input.mean(dim=1), head_keypoint_input.mean(dim=1)],
@@ -903,7 +910,7 @@ class RecognitionNetwork(torch.nn.Module):
             raise ValueError
 
         # compute losses
-        if self.fuse_method == None or "loss1" in self.fuse_method:
+        if self.fuse_method is None or "loss1" in self.fuse_method:
             if head_outputs["gloss_logits"] is not None:
                 if mixup_param:
                     outputs["recognition_loss"] = lam * self.compute_recognition_loss(
