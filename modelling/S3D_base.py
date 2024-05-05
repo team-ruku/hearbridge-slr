@@ -153,9 +153,10 @@ class SepConv3d(nn.Module):
                 torch.arange(H).float().to(x.device) / H,
                 torch.arange(W).float().to(x.device) / W,
             )
-            h_idx, w_idx = ((h_idx - 0.5) / 0.5).reshape(1, 1, 1, H, 1).expand(
-                B, 1, T, H, W
-            ), ((w_idx - 0.5) / 0.5).reshape(1, 1, 1, 1, W).expand(B, 1, T, H, W)
+            h_idx, w_idx = (
+                ((h_idx - 0.5) / 0.5).reshape(1, 1, 1, H, 1).expand(B, 1, T, H, W),
+                ((w_idx - 0.5) / 0.5).reshape(1, 1, 1, 1, W).expand(B, 1, T, H, W),
+            )
             x = torch.cat([x, h_idx, w_idx], dim=1)
 
         x = self.conv_s(x)

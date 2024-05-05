@@ -41,8 +41,9 @@ class LabelSmoothCE(nn.Module):
                 ignore = label.eq(self.lb_ignore)
                 n_valid = ignore.eq(0).sum()
                 label[ignore] = 0
-                lb_pos, lb_neg = 1.0 - self.lb_smooth, self.lb_smooth / (
-                    num_classes - 1
+                lb_pos, lb_neg = (
+                    1.0 - self.lb_smooth,
+                    self.lb_smooth / (num_classes - 1),
                 )
                 lb_one_hot = (
                     torch.empty_like(logits)

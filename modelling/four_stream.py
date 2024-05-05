@@ -11,7 +11,7 @@ class S3D_four_stream(nn.Module):
         freeze_block=(0, 0),
         pose_inchannels=17,
         flag_lateral=[True, True],
-        **kwargs
+        **kwargs,
     ):
         super(S3D_four_stream, self).__init__()
         self.ts_high = S3D_two_stream_v2(
@@ -103,7 +103,6 @@ class S3D_four_stream(nn.Module):
                 self.ts_low.pose_stream.backbone.base,
             )
         ):
-
             x_rgb_high = rgb_high_layer(x_rgb_high)
             x_pose_high = pose_high_layer(x_pose_high)
             x_rgb_low = rgb_low_layer(x_rgb_low)

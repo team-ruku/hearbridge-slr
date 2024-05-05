@@ -12,7 +12,7 @@ data:
     - mouth_half
     - hand
   zip_file: WLASL.zip
-  word_emb_file: ../data/wlasl_2000/wlasl_word_embeddings.pkl
+  word_emb_file: wlasl_word_embeddings.pkl
   train: train.pkl
   dev: dev.pkl
   test: test.pkl

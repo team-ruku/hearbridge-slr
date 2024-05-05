@@ -307,10 +307,13 @@ class RecognitionNetwork(torch.nn.Module):
             load_dict["low"] = torch.load(
                 cfg["pretrained_path_two"][1], map_location="cpu"
             )["model_state"]
-            backbone_dict, head_dict = {"high": {}, "low": {}}, {
-                "high": {"rgb": {}, "keypoint": {}, "fuse": {}},
-                "low": {"rgb": {}, "keypoint": {}, "fuse": {}},
-            }
+            backbone_dict, head_dict = (
+                {"high": {}, "low": {}},
+                {
+                    "high": {"rgb": {}, "keypoint": {}, "fuse": {}},
+                    "low": {"rgb": {}, "keypoint": {}, "fuse": {}},
+                },
+            )
             for n in ["high", "low"]:
                 for k, v in load_dict[n].items():
                     if "visual_backbone_twostream" in k:
@@ -440,8 +443,9 @@ class RecognitionNetwork(torch.nn.Module):
         sgn_videos_low=None,
         sgn_heatmaps_low=None,
     ):
-        rgb_h, rgb_w = self.transform_cfg.get("img_size", 224), self.transform_cfg.get(
-            "img_size", 224
+        rgb_h, rgb_w = (
+            self.transform_cfg.get("img_size", 224),
+            self.transform_cfg.get("img_size", 224),
         )
         if sgn_heatmaps is not None:
             hm_h, hm_w = self.heatmap_cfg["input_size"], self.heatmap_cfg["input_size"]
@@ -938,18 +942,19 @@ class RecognitionNetwork(torch.nn.Module):
             for k in key_lst:
                 if f"{k}_gloss_logits" in head_outputs:
                     if mixup_param:
-                        outputs[
-                            f"recognition_loss_{k}"
-                        ] = lam * self.compute_recognition_loss(
-                            logits=head_outputs[f"{k}_gloss_logits"],
-                            labels=y_a,
-                            head_name=k,
-                        ) + (
-                            1.0 - lam
-                        ) * self.compute_recognition_loss(
-                            logits=head_outputs[f"{k}_gloss_logits"],
-                            labels=y_b,
-                            head_name=k,
+                        outputs[f"recognition_loss_{k}"] = (
+                            lam
+                            * self.compute_recognition_loss(
+                                logits=head_outputs[f"{k}_gloss_logits"],
+                                labels=y_a,
+                                head_name=k,
+                            )
+                            + (1.0 - lam)
+                            * self.compute_recognition_loss(
+                                logits=head_outputs[f"{k}_gloss_logits"],
+                                labels=y_b,
+                                head_name=k,
+                            )
                         )
                     else:
                         outputs[f"recognition_loss_{k}"] = (

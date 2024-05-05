@@ -193,8 +193,9 @@ if __name__ == "__main__":
     if os.path.isfile(load_model_path):
         state_dict = torch.load(load_model_path, map_location="cuda")
         neq_load_customized(model, state_dict["model_state"], verbose=True)
-        epoch, global_step = state_dict.get("epoch", 0), state_dict.get(
-            "global_step", 0
+        epoch, global_step = (
+            state_dict.get("epoch", 0),
+            state_dict.get("global_step", 0),
         )
         print("Load model ckpt from " + load_model_path)
     else:

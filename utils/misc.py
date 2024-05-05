@@ -23,9 +23,9 @@ def load_config(path="configs/default.yaml") -> dict:
                 use_keypoints=cfg["data"]["use_keypoints"],
             )
             if "keypoint_s3d" in cfg["model"]["RecognitionNetwork"]:
-                cfg["model"]["RecognitionNetwork"]["keypoint_s3d"][
-                    "in_channel"
-                ] = keypoints_num
+                cfg["model"]["RecognitionNetwork"]["keypoint_s3d"]["in_channel"] = (
+                    keypoints_num
+                )
                 print(
                     f"Overwrite cfg.model.RecognitionNetwork.keypoint_s3d.in_channel -> {keypoints_num}"
                 )
