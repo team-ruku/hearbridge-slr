@@ -146,7 +146,6 @@ def load_video(
     dataset_name,
     is_train,
     index_setting=["consecutive", "pad", "central", "pad"],
-    temp_scale=[1.0, 1.0],
     ori_vfile="",
 ):
     if "WLASL" in dataset_name:
@@ -179,7 +178,6 @@ def load_batch_video(
     num_output_frames=64,
     name2keypoint=None,
     index_setting=["consecutive", "pad", "central", "pad"],
-    temp_scale=[1.0, 1.0],
     ori_video_files=[],
     from64=False,
 ):
@@ -196,7 +194,6 @@ def load_batch_video(
             dataset_name,
             is_train,
             index_setting,
-            temp_scale,
             ori_vfile,
         )
         # video = torch.tensor(video).to(torch.uint8)

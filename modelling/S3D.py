@@ -1,8 +1,7 @@
 import torch
 from torch import nn
-import glob, os
-from utils.misc import neq_load_customized
-from modelling.S3D_base import S3D_base, BasicConv3d
+
+from modelling.S3D_base import BasicConv3d, S3D_base
 
 BLOCK2SIZE = {1: 64, 2: 192, 3: 480, 4: 832, 5: 1024}
 
@@ -32,7 +31,7 @@ class S3Ds(S3D_base):
             ):  # base  0,1,2,...,self.BLOCK2END_POINT[blk]
                 module_name = "base.{}".format(i)
                 submodule = self.base[i]
-                assert submodule != None, module_name
+                assert submodule is not None, module_name
                 if i <= self.BLOCK2END_POINT["block{}".format(freeze_block)]:
                     self.frozen_modules.append(submodule)
 
@@ -47,7 +46,6 @@ class S3D_backbone(torch.nn.Module):
         in_channel=3,
         use_block=5,
         freeze_block=0,
-        pretrained_ckpt="./assets/pretrained/s3ds_actioncls_ckpt",
         cfg_pyramid=None,
         coord_conv=None,
         use_shortcut=False,
@@ -62,11 +60,6 @@ class S3D_backbone(torch.nn.Module):
         )
         self.set_frozen_layers()
         self.out_features = BLOCK2SIZE[use_block]
-        if pretrained_ckpt == "scratch":
-            print("Train S3D backbone from scratch")
-        else:
-            print(f"Load pretrained S3D backbone from {pretrained_ckpt}")
-            self.load_s3d_model_weight(pretrained_ckpt)
 
         self.stage_idx = [0, 3, 6, 12, 15]
         self.stage_idx = self.stage_idx[:use_block]
@@ -87,39 +80,6 @@ class S3D_backbone(torch.nn.Module):
                 )
 
         self.num_levels = 3
-
-    def load_s3d_model_weight(self, model_path):
-        if "actioncls" in model_path:
-            filename = glob.glob(os.path.join(model_path, "*.pt"))
-            checkpoint = torch.load(filename[0], map_location="cpu")
-            state_dict = checkpoint
-            new_dict = {}
-            for k, v in state_dict.items():
-                k = k.replace("module.", "backbone.")
-                new_dict[k] = v
-            state_dict = new_dict
-            try:
-                self.load_state_dict(state_dict)
-            except:
-                neq_load_customized(self, state_dict, verbose=True)
-        elif "glosscls" in model_path:
-            filename = glob.glob(os.path.join(model_path, "*.pth.tar"))
-            checkpoint = torch.load(filename[0], map_location="cpu")
-            state_dict = checkpoint["state_dict"]
-            try:
-                self.load_state_dict(state_dict)
-            except:
-                neq_load_customized(self, state_dict, verbose=True)
-        else:
-            raise ValueError
-
-    def set_train(self):
-        self.train()
-        for m in getattr(self.backbone, "frozen_modules", []):
-            m.eval()
-
-    def get_frozen_layers(self):
-        return getattr(self.backbone, "frozen_modules", [])
 
     def set_frozen_layers(self):
         for m in getattr(self.backbone, "frozen_modules", []):

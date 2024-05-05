@@ -8,12 +8,9 @@ import torchvision
 from torchvision.transforms import functional
 
 from modelling.four_stream import S3D_four_stream
-from modelling.S3D import S3D_backbone
-from modelling.two_stream import S3D_two_stream_v2
 from modelling.Visualhead import SepConvVisualHead
 from utils.gen_gaussian import gen_gaussian_hmap_op
 from utils.loss import LabelSmoothCE
-from utils.misc import neq_load_customized
 
 
 class RecognitionNetwork(torch.nn.Module):
@@ -23,7 +20,6 @@ class RecognitionNetwork(torch.nn.Module):
         transform_cfg,
         cls_num=2000,
         input_streams=["rgb"],
-        input_frames=64,
         word_emb_tab=None,
     ):
         super().__init__()
@@ -42,42 +38,7 @@ class RecognitionNetwork(torch.nn.Module):
         self.visual_backbone = self.visual_backbone_keypoint = (
             self.visual_backbone_twostream
         ) = None
-        if input_streams == ["rgb"]:
-            self.visual_backbone = S3D_backbone(
-                in_channel=3, **cfg["s3d"], cfg_pyramid=cfg["pyramid"]
-            )
-
-        elif input_streams == ["keypoint"]:
-            self.visual_backbone_keypoint = S3D_backbone(
-                **cfg["keypoint_s3d"], cfg_pyramid=cfg["pyramid"]
-            )
-
-        elif len(input_streams) == 2:
-            self.visual_backbone_twostream = S3D_two_stream_v2(
-                use_block=cfg["s3d"]["use_block"],
-                freeze_block=(
-                    cfg["s3d"]["freeze_block"],
-                    cfg["keypoint_s3d"]["freeze_block"],
-                ),
-                pose_inchannels=cfg["keypoint_s3d"]["in_channel"],
-                flag_lateral=(
-                    cfg["lateral"].get("pose2rgb", False),
-                    cfg["lateral"].get("rgb2pose", False),
-                ),
-                lateral_variant=(
-                    cfg["lateral"].get("variant_pose2rgb", None),
-                    cfg["lateral"].get("variant_rgb2pose", None),
-                ),
-                lateral_ksize=tuple(cfg["lateral"].get("kernel_size", (1, 3, 3))),
-                lateral_ratio=tuple(cfg["lateral"].get("ratio", (1, 2, 2))),
-                lateral_interpolate=cfg["lateral"].get("interpolate", False),
-                cfg_pyramid=cfg["pyramid"],
-                fusion_features=cfg["lateral"].get(
-                    "fusion_features", ["c1", "c2", "c3"]
-                ),
-            )
-
-        elif len(input_streams) == 4:
+        if len(input_streams) == 4:
             self.visual_backbone_fourstream = S3D_four_stream(
                 use_block=cfg["s3d"]["use_block"],
                 freeze_block=(
@@ -109,7 +70,7 @@ class RecognitionNetwork(torch.nn.Module):
         if "visual_head" in cfg:
             HeadCLS = SepConvVisualHead
             language_apply_to = cfg.get("language_apply_to", "rgb_keypoint_joint")
-            if "rgb" in input_streams or len(self.input_streams) == 2:
+            if "rgb" in input_streams:
                 rgb_head_cfg = deepcopy(cfg["visual_head"])
                 if "rgb" not in language_apply_to:
                     rgb_head_cfg["contras_setting"] = None
@@ -119,11 +80,7 @@ class RecognitionNetwork(torch.nn.Module):
             else:
                 self.visual_head = None
 
-            if (
-                "keypoint" in input_streams
-                or "keypoint_coord" in input_streams
-                or len(self.input_streams) == 2
-            ):
+            if "keypoint" in input_streams:
                 keypoint_head_cfg = deepcopy(cfg["visual_head"])
                 if "keypoint" not in language_apply_to:
                     keypoint_head_cfg["contras_setting"] = None
@@ -159,20 +116,7 @@ class RecognitionNetwork(torch.nn.Module):
                     "fuse-x-kp": None,
                 }
 
-            if self.fuse_method is not None and "triplehead" in self.fuse_method:
-                assert len(input_streams) == 2
-                joint_head_cfg = deepcopy(cfg["visual_head"])
-                if "joint" not in language_apply_to:
-                    joint_head_cfg["contras_setting"] = None
-                if "cat" in self.fuse_method:
-                    joint_head_cfg["input_size"] = (
-                        2 * cfg["visual_head"]["input_size"]
-                    )  # dirty solution
-                self.visual_head_fuse = HeadCLS(
-                    cls_num=cls_num, word_emb_tab=word_emb_tab, **joint_head_cfg
-                )
-
-            elif self.fuse_method is not None and "four" in self.fuse_method:
+            if self.fuse_method is not None and "four" in self.fuse_method:
                 assert len(input_streams) == 4
                 joint_head_cfg = deepcopy(cfg["visual_head"])
                 if "joint" not in language_apply_to:
@@ -193,170 +137,6 @@ class RecognitionNetwork(torch.nn.Module):
                     )
                     self.head_dict["fuse-h"] = self.visual_head_fuse_h
                     self.head_dict["fuse-l"] = self.visual_head_fuse_l
-                    if "type2" in self.fuse_method:
-                        self.visual_head_x_rgb = HeadCLS(
-                            cls_num=cls_num, word_emb_tab=word_emb_tab, **joint_head_cfg
-                        )
-                        self.visual_head_x_kp = HeadCLS(
-                            cls_num=cls_num, word_emb_tab=word_emb_tab, **joint_head_cfg
-                        )
-                        self.head_dict["fuse-x-rgb"] = self.visual_head_x_rgb
-                        self.head_dict["fuse-x-kp"] = self.visual_head_x_kp
-
-        if "pretrained_path_rgb" in cfg:
-            load_dict = torch.load(cfg["pretrained_path_rgb"], map_location="cpu")[
-                "model_state"
-            ]
-            backbone_dict, head_dict, head_remain_dict = {}, {}, {}
-            for k, v in load_dict.items():
-                if "visual_backbone" in k:
-                    backbone_dict[
-                        k.replace("recognition_network.visual_backbone.", "")
-                    ] = v
-                if "visual_head" in k and "visual_head_remain" not in k:
-                    head_dict[k.replace("recognition_network.visual_head.", "")] = v
-            if (
-                self.visual_backbone is not None
-                and self.visual_backbone_twostream is None
-            ):
-                neq_load_customized(self.visual_backbone, backbone_dict, verbose=True)
-                neq_load_customized(self.visual_head, head_dict, verbose=True)
-                print(
-                    "Load visual_backbone and visual_head for rgb from {}".format(
-                        cfg["pretrained_path_rgb"]
-                    )
-                )
-            elif (
-                self.visual_backbone is None
-                and self.visual_backbone_twostream is not None
-            ):
-                neq_load_customized(
-                    self.visual_backbone_twostream.rgb_stream,
-                    backbone_dict,
-                    verbose=True,
-                )
-                neq_load_customized(self.visual_head, head_dict, verbose=True)
-                print(
-                    "Load visual_backbone_twostream.rgb_stream and visual_head for rgb from {}".format(
-                        cfg["pretrained_path_rgb"]
-                    )
-                )
-            else:
-                print("No rgb stream exists in the network")
-
-        if "pretrained_path_keypoint" in cfg and input_streams != ["keypoint_coord"]:
-            load_dict = torch.load(cfg["pretrained_path_keypoint"], map_location="cpu")[
-                "model_state"
-            ]
-            backbone_dict, head_dict, head_remain_dict = {}, {}, {}
-            for k, v in load_dict.items():
-                if "visual_backbone_keypoint" in k:
-                    backbone_dict[
-                        k.replace("recognition_network.visual_backbone_keypoint.", "")
-                    ] = v
-                if (
-                    "visual_head_keypoint" in k
-                    and "visual_head_keypoint_remain" not in k
-                ):  # for model trained using new_code
-                    head_dict[
-                        k.replace("recognition_network.visual_head_keypoint.", "")
-                    ] = v
-                elif "visual_head_keypoint_remain" in k:
-                    head_remain_dict[
-                        k.replace(
-                            "recognition_network.visual_head_keypoint_remain.", ""
-                        )
-                    ] = v
-            if (
-                self.visual_backbone_keypoint is not None
-                and self.visual_backbone_twostream is None
-            ):
-                neq_load_customized(
-                    self.visual_backbone_keypoint, backbone_dict, verbose=True
-                )
-                neq_load_customized(self.visual_head_keypoint, head_dict, verbose=True)
-                print(
-                    "Load visual_backbone and visual_head for keypoint from {}".format(
-                        cfg["pretrained_path_keypoint"]
-                    )
-                )
-            elif (
-                self.visual_backbone_keypoint is None
-                and self.visual_backbone_twostream is not None
-            ):
-                neq_load_customized(
-                    self.visual_backbone_twostream.pose_stream,
-                    backbone_dict,
-                    verbose=True,
-                )
-                neq_load_customized(self.visual_head_keypoint, head_dict, verbose=True)
-                print(
-                    "Load visual_backbone_twostream.pose_stream and visual_head for pose from {}".format(
-                        cfg["pretrained_path_keypoint"]
-                    )
-                )
-            else:
-                print("No pose stream exists in the network")
-
-        if "pretrained_path_two" in cfg:
-            assert len(input_streams) == 4
-            load_dict = {}
-            load_dict["high"] = torch.load(
-                cfg["pretrained_path_two"][0], map_location="cpu"
-            )["model_state"]
-            load_dict["low"] = torch.load(
-                cfg["pretrained_path_two"][1], map_location="cpu"
-            )["model_state"]
-            backbone_dict, head_dict = (
-                {"high": {}, "low": {}},
-                {
-                    "high": {"rgb": {}, "keypoint": {}, "fuse": {}},
-                    "low": {"rgb": {}, "keypoint": {}, "fuse": {}},
-                },
-            )
-            for n in ["high", "low"]:
-                for k, v in load_dict[n].items():
-                    if "visual_backbone_twostream" in k:
-                        backbone_dict[n][
-                            k.replace(
-                                "recognition_network.visual_backbone_twostream.", ""
-                            )
-                        ] = v
-                    if "visual_head_keypoint" in k:
-                        head_dict[n]["keypoint"][
-                            k.replace("recognition_network.visual_head_keypoint.", "")
-                        ] = v
-                    elif "visual_head_fuse" in k:
-                        head_dict[n]["fuse"][
-                            k.replace("recognition_network.visual_head_fuse.", "")
-                        ] = v
-                    elif "visual_head" in k:
-                        head_dict[n]["rgb"][
-                            k.replace("recognition_network.visual_head.", "")
-                        ] = v
-
-            neq_load_customized(
-                self.visual_backbone_fourstream.ts_high, backbone_dict["high"]
-            )
-            print("Load visual_backbone high")
-            neq_load_customized(
-                self.visual_backbone_fourstream.ts_low, backbone_dict["low"]
-            )
-            print("Load visual_backbone low")
-            neq_load_customized(self.visual_head_rgb_h, head_dict["high"]["rgb"])
-            print("Load visual_head rgb high")
-            neq_load_customized(self.visual_head_rgb_l, head_dict["low"]["rgb"])
-            print("Load visual_head rgb low")
-            neq_load_customized(self.visual_head_kp_h, head_dict["high"]["keypoint"])
-            print("Load visual_head keypoint high")
-            neq_load_customized(self.visual_head_kp_l, head_dict["low"]["keypoint"])
-            print("Load visual_head keypoint low")
-            if self.head_dict["fuse-h"] is not None:
-                neq_load_customized(self.visual_head_fuse_h, head_dict["high"]["fuse"])
-                print("Load visual_head fuse high")
-            if self.head_dict["fuse-l"] is not None:
-                neq_load_customized(self.visual_head_fuse_l, head_dict["low"]["fuse"])
-                print("Load visual_head fuse low")
 
         label_smooth = cfg.get("label_smooth", 0.0)
         if isinstance(label_smooth, float) and label_smooth > 0:
@@ -467,8 +247,6 @@ class RecognitionNetwork(torch.nn.Module):
                         0.4, 0.4, 0.4, 0.1
                     )
                     sgn_videos = color_jitter_op(sgn_videos)  # B T C H W
-                    if self.input_streams == ["rgb", "rgb"]:
-                        sgn_heatmaps = color_jitter_op(sgn_heatmaps)
                     if sgn_videos_low is not None:
                         sgn_videos_low = color_jitter_op(sgn_videos_low)
                 if self.transform_cfg.get("gaussian_blur", False):
@@ -565,12 +343,6 @@ class RecognitionNetwork(torch.nn.Module):
         else:
             if sgn_videos is not None:
                 spatial_ops = []
-                if self.transform_cfg.get("center_crop", False) is True:
-                    spatial_ops.append(
-                        torchvision.transforms.CenterCrop(
-                            self.transform_cfg["center_crop_size"]
-                        )
-                    )
                 spatial_ops.append(torchvision.transforms.Resize([rgb_h, rgb_w]))
                 spatial_ops = torchvision.transforms.Compose(spatial_ops)
                 sgn_videos = self.apply_spatial_ops(sgn_videos, spatial_ops)
@@ -578,15 +350,6 @@ class RecognitionNetwork(torch.nn.Module):
                     sgn_videos_low = self.apply_spatial_ops(sgn_videos_low, spatial_ops)
             if sgn_heatmaps is not None:
                 spatial_ops = []
-                if self.transform_cfg.get("center_crop", False) is True:
-                    spatial_ops.append(
-                        torchvision.transforms.CenterCrop(
-                            [
-                                int(self.transform_cfg["center_crop_size"] * factor_h),
-                                int(self.transform_cfg["center_crop_size"] * factor_w),
-                            ]
-                        )
-                    )
                 spatial_ops.append(torchvision.transforms.Resize([hm_h, hm_w]))
                 spatial_ops = torchvision.transforms.Compose(spatial_ops)
                 sgn_heatmaps = self.apply_spatial_ops(sgn_heatmaps, spatial_ops)
@@ -687,12 +450,6 @@ class RecognitionNetwork(torch.nn.Module):
             else:
                 sgn_heatmaps = None
 
-            if "rgb" not in self.input_streams:
-                sgn_videos = None
-
-            if self.input_streams == ["rgb", "rgb"]:
-                sgn_heatmaps = sgn_keypoints
-
             sgn_videos_low = kwargs.pop("sgn_videos_low", None)
             sgn_keypoints_low = kwargs.pop("sgn_keypoints_low", None)
             sgn_heatmaps_low = None
@@ -729,119 +486,12 @@ class RecognitionNetwork(torch.nn.Module):
                 ip_d=sgn_heatmaps_low,
             )
 
-        if self.input_streams == ["rgb"] and self.visual_backbone is not None:
-            s3d_outputs = self.visual_backbone(sgn_videos=sgn_videos)
-        elif (
-            self.input_streams == ["keypoint"]
-            and self.visual_backbone_keypoint is not None
-        ):
-            s3d_outputs = self.visual_backbone_keypoint(sgn_videos=sgn_heatmaps)
-        elif (
-            len(self.input_streams) == 2 and self.visual_backbone_twostream is not None
-        ):
-            s3d_outputs = self.visual_backbone_twostream(
-                x_rgb=sgn_videos, x_pose=sgn_heatmaps
-            )
-        elif len(self.input_streams) == 4:
+        if len(self.input_streams) == 4:
             s3d_outputs = self.visual_backbone_fourstream(
                 sgn_videos, sgn_videos_low, sgn_heatmaps, sgn_heatmaps_low
             )
 
-        if self.fuse_method is None:
-            assert len(self.input_streams) == 1, self.input_streams
-            assert self.cfg["pyramid"]["rgb"] == self.cfg["pyramid"]["pose"]
-
-            if "rgb" in self.input_streams:
-                assert self.visual_head is not None
-                head_outputs = self.visual_head(
-                    x=s3d_outputs["sgn_feature"], labels=labels
-                )
-            elif "keypoint" in self.input_streams:
-                assert self.visual_head_keypoint is not None
-                head_outputs = self.visual_head_keypoint(
-                    x=s3d_outputs["sgn_feature"], labels=labels
-                )
-            else:
-                raise ValueError
-            outputs = {**head_outputs}
-
-        elif "sephead" in self.fuse_method or "triplehead" in self.fuse_method:
-            assert len(self.input_streams) == 2
-
-            # rgb
-            assert self.visual_head is not None
-            head_outputs_rgb = self.visual_head(
-                x=s3d_outputs["rgb_fea_lst"][-1], labels=labels
-            )
-            head_rgb_input = s3d_outputs["rgb_fea_lst"][-1]  # B,C,T,H,W
-
-            # keypoint
-            assert self.visual_head_keypoint is not None
-            head_keypoint_input = s3d_outputs["pose_fea_lst"][-1]
-            head_outputs_keypoint = self.visual_head_keypoint(
-                x=s3d_outputs["pose_fea_lst"][-1], labels=labels
-            )
-
-            head_outputs = {
-                "gloss_logits": None,
-                "rgb_gloss_logits": head_outputs_rgb["gloss_logits"],
-                "keypoint_gloss_logits": head_outputs_keypoint["gloss_logits"],
-                "gloss_probabilities": None,
-                "rgb_gloss_probabilities": head_outputs_rgb["gloss_probabilities"],
-                "keypoint_gloss_probabilities": head_outputs_keypoint[
-                    "gloss_probabilities"
-                ],
-                "head_rgb_input": head_rgb_input,
-                "head_keypoint_input": head_keypoint_input,
-            }
-
-            if "triplehead" in self.fuse_method:
-                assert self.visual_head_fuse is not None
-                if self.input_streams == ["rgb", "rgb"]:
-                    fused_sgn_features = torch.cat(
-                        [head_rgb_input.mean(dim=1), head_keypoint_input.mean(dim=1)],
-                        dim=-1,
-                    )
-                else:
-                    fused_sgn_features = torch.cat(
-                        [head_rgb_input, head_keypoint_input], dim=-1
-                    )
-
-                head_outputs_fuse = self.visual_head_fuse(
-                    x=fused_sgn_features, labels=labels
-                )
-                head_outputs["fuse_gloss_probabilities"] = head_outputs_fuse[
-                    "gloss_probabilities"
-                ]
-                head_outputs["fuse_gloss_logits"] = head_outputs_fuse["gloss_logits"]
-                head_outputs["fuse_gloss_feature"] = head_outputs_fuse["gloss_feature"]
-                head_outputs["head_fuse_input"] = fused_sgn_features
-
-                head_outputs["rgb_topk_idx"] = head_outputs_rgb["topk_idx"]
-                head_outputs["keypoint_topk_idx"] = head_outputs_keypoint["topk_idx"]
-                head_outputs["fuse_topk_idx"] = head_outputs_fuse["topk_idx"]
-
-                head_outputs["ensemble_last_gloss_logits"] = (
-                    head_outputs["fuse_gloss_logits"].softmax(dim=-1)
-                    + head_outputs["rgb_gloss_logits"].softmax(dim=-1)
-                    + head_outputs["keypoint_gloss_logits"].softmax(-1)
-                ).log()
-                head_outputs["ensemble_last_gloss_raw_logits"] = head_outputs[
-                    "ensemble_last_gloss_logits"
-                ]
-
-            else:
-                raise ValueError
-
-            head_outputs["ensemble_last_gloss_probabilities_log"] = head_outputs[
-                "ensemble_last_gloss_logits"
-            ].log_softmax(1)
-            head_outputs["ensemble_last_gloss_probabilities"] = head_outputs[
-                "ensemble_last_gloss_logits"
-            ].softmax(1)
-            outputs = {**head_outputs}
-
-        elif "four" in self.fuse_method:
+        if "four" in self.fuse_method:
             outputs = {}
             keys_of_int = ["gloss_logits", "word_fused_gloss_logits", "topk_idx"]
             for head_name, fea in s3d_outputs.items():
@@ -913,32 +563,10 @@ class RecognitionNetwork(torch.nn.Module):
         else:
             raise ValueError
 
-        # compute losses
-        if self.fuse_method is None or "loss1" in self.fuse_method:
-            if head_outputs["gloss_logits"] is not None:
-                if mixup_param:
-                    outputs["recognition_loss"] = lam * self.compute_recognition_loss(
-                        logits=head_outputs["gloss_logits"], labels=y_a
-                    ) + (1.0 - lam) * self.compute_recognition_loss(
-                        logits=head_outputs["gloss_logits"], labels=y_b
-                    )
-                else:
-                    outputs["recognition_loss"] = self.compute_recognition_loss(
-                        logits=head_outputs["gloss_logits"], labels=labels
-                    )
-
-        elif (
-            "loss2" in self.fuse_method
-            or "loss3" in self.fuse_method
-            or "triplehead" in self.fuse_method
-            or "four" in self.fuse_method
-        ):
-            assert len(self.input_streams) == 2 or len(self.input_streams) == 4
-            if len(self.input_streams) == 2:
-                key_lst = ["rgb", "keypoint", "fuse"]
-            else:
-                key_lst = effect_head_lst
-                head_outputs = outputs
+        if "four" in self.fuse_method:
+            assert len(self.input_streams) == 4
+            key_lst = effect_head_lst
+            head_outputs = outputs
             for k in key_lst:
                 if f"{k}_gloss_logits" in head_outputs:
                     if mixup_param:
@@ -963,20 +591,7 @@ class RecognitionNetwork(torch.nn.Module):
                             )
                         )
 
-            if "loss2" in self.fuse_method:
-                outputs["recognition_loss"] = (
-                    outputs["recognition_loss_rgb"]
-                    + outputs["recognition_loss_keypoint"]
-                )
-
-            elif "triplehead" in self.fuse_method:
-                outputs["recognition_loss"] = (
-                    outputs["recognition_loss_rgb"]
-                    + outputs["recognition_loss_keypoint"]
-                    + outputs["recognition_loss_fuse"]
-                )
-
-            elif "four" in self.fuse_method:
+            if "four" in self.fuse_method:
                 for k in effect_head_lst:
                     outputs["recognition_loss"] = (
                         outputs.get(
@@ -990,9 +605,7 @@ class RecognitionNetwork(torch.nn.Module):
         outputs["total_loss"] = outputs["recognition_loss"]
 
         if self.contras_setting is not None:
-            if len(self.input_streams) == 2:
-                key_lst = ["rgb_", "keypoint_", "fuse_"]
-            elif len(self.input_streams) == 4:
+            if len(self.input_streams) == 4:
                 key_lst = [e + "_" for e in effect_head_lst]
             else:
                 key_lst = [""]
@@ -1064,16 +677,5 @@ class RecognitionNetwork(torch.nn.Module):
                     epoch=epoch,
                     sgn_videos_low=sgn_videos[1],
                     sgn_keypoints_low=sgn_keypoints[1],
-                    **kwargs,
-                )
-
-            elif len(self.input_streams) == 2:
-                sgn_videos, sgn_keypoints = sgn_videos
-                return self._forward_impl(
-                    is_train,
-                    labels,
-                    sgn_videos=sgn_videos,
-                    sgn_keypoints=sgn_keypoints,
-                    epoch=epoch,
                     **kwargs,
                 )

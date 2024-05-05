@@ -43,7 +43,6 @@ def collate_fn_(batch, data_cfg, is_train, vocab, name2keypoint, word_emb_tab):
         num_output_frames=num_output_frames,
         name2keypoint=name2keypoint,
         index_setting=index_setting,
-        temp_scale=data_cfg["transform_cfg"].get("temporal_augmentation", [1.0, 1.0]),
         ori_video_files=outputs["ori_video_files"],
         from64=data_cfg["transform_cfg"].get("from64", False),  # sample 32 from 64
     )
