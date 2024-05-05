@@ -1,6 +1,4 @@
-task: ISLR
 data:
-  input_data: videos #features, gloss
   input_streams:
     - keypoint
     - keypoint
@@ -17,10 +15,7 @@ data:
   dev: dev.pkl
   test: test.pkl
   dataset_name: MSASL-100
-  level: word #word or char
-  txt_lowercase: true
   num_output_frames: 64
-  max_sent_length: 400
   transform_cfg:
     img_size: 224
     color_jitter: true
@@ -40,10 +35,6 @@ data:
       - pad  #test_m
     mixup: 0.75_0.8
     from64: true
-testing:
-  cfg:
-    recognition:
-      beam_size: 1
 training:
   overwrite: true
   model_dir: results/nla_slr_msasl_100
@@ -71,9 +62,6 @@ training:
     t_max: 100
 model:
   RecognitionNetwork:
-    # pretrained_path_two:
-    #   - results/two_frame64_msasl_100/ckpts/best.ckpt
-    #   - results/two_frame32_msasl_100/ckpts/best.ckpt
     GlossTokenizer:
       gloss2id_file: ../pretrained_models/mBart_de_2/gloss2ids.pkl  #deprecated
     s3d:
@@ -111,10 +99,6 @@ model:
       version: v1
       rgb: null
       pose: null
-    aux_head:
-      head_weight_rgb: 0.2
-      head_weight_keypoint: 0.5
-      num: 0
     visual_head:
       variant: sep_conv
       use_extra_linear: false  #for joint head only
