@@ -1,3 +1,4 @@
+```bash
 conda create -y -n hearbridge-slr python=3.8
 conda activate hearbridge-slr
 conda install pytorch torchvision pytorch-cuda=12.1 cuda -c pytorch -c nvidia
@@ -18,3 +19,4 @@ git clone https://github.com/open-mmlab/mmpose.git
 cd mmpose
 pip install -r requirements.txt
 pip install -v -e .
+```
