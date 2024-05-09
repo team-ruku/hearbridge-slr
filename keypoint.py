@@ -1,4 +1,5 @@
 import warnings
+from os import path
 
 import cv2
 import lintel
@@ -8,9 +9,10 @@ from mmdet.apis import inference_detector, init_detector
 from mmdet.structures import DetDataSample
 from mmengine.registry import init_default_scope
 
+from datasets.dataset import buildDataset
+from funcs.misc import loadConfig, loadCustomized, moveToDevice
 from mmpose.apis import inference_topdown, init_model
-
-# from mmdet.registry import VISUALIZERS
+from models.model import buildModel
 
 warnings.filterwarnings("ignore")
 
@@ -25,6 +27,16 @@ pose_config = "./mmpose/configs/wholebody_2d_keypoint/topdown_heatmap/coco-whole
 pose_ckpt = (
     "./assets/keypoint/hrnet_w48_coco_wholebody_384x288_dark-f5726563_20200918.pth"
 )
+
+part2Index = {
+    "pose": list(range(11)),
+    "hand": list(range(91, 133)),
+    "mouth": list(range(71, 91)),
+    "face_others": list(range(23, 71)),
+}
+for key in ["mouth", "face_others", "hand"]:
+    part2Index[key + "_half"] = part2Index[key][::2]
+    part2Index[key + "_1_3"] = part2Index[key][::3]
 
 
 def getSelectedIndexs(videoFrames, numFrames=64):
@@ -86,61 +98,130 @@ def loadVideo(videoPath):
     with open(videoPath, "rb") as f:
         videoBytes = f.read()
 
-    videoArrays = loadFrameNumsTo4DArray(videoBytes, selectedIndex)
+    videoArrays = loadFrameNumsTo4DArray(videoBytes, selectedIndex)  # T,H,W,C
     if pad is not None:
         videoArrays = padArray(videoArrays, pad)
 
     videoArrays = torch.tensor(videoArrays).float()  # T,H,W,C
-    videoArrays = torch.permute(videoArrays, (0, 3, 1, 2))  # T,C,H,W
+    videoArrays /= 255
 
-    return videoArrays
+    videos = []
+    videos.append(videoArrays)
+    videos = torch.stack(videos, dim=0).permute(0, 1, 4, 2, 3)  # 1,T,C,H,W
+
+    return videos
 
 
 def detectionInference(model, frames):
     init_default_scope("mmdet")
-    results = []
+    detections = []
     for frame in frames:
         result = inference_detector(model, frame[0])
         assert isinstance(result, DetDataSample)
 
         instances = result.pred_instances
         instances = instances[instances.scores >= 0.75]  # type: ignore
-        results.append(instances.bboxes.cpu().numpy())  # type: ignore
-    return results
+        detections.append(instances.bboxes.cpu().numpy())  # type: ignore
+    return detections
 
 
-def poseInference(model, frames, detectionResults):
+def poseInference(model, frames, detectionResults, filterKeys):
     init_default_scope("mmpose")
-    results = np.zeros((len(frames), 133, 2), dtype=np.float32)
+    results = np.zeros((len(frames), 133, 3), dtype=np.float32)
     for i, (frame, detectionResult) in enumerate(zip(frames, detectionResults)):
         result = inference_topdown(
             model, frame[0], bboxes=detectionResult, bbox_format="xyxy"
         )
-        results[i] = result[0].pred_instances.keypoints  # type: ignore
-    return results
+
+        instances = result[0].pred_instances
+        visibility = instances.keypoints_visible[0][:, np.newaxis]  # type: ignore
+        combined = np.hstack((instances.keypoints[0], visibility))  # type: ignore
+        combined = combined.reshape((133, 3))
+
+        results[i] = combined
+
+    filtered = []
+    for key in sorted(filterKeys):
+        selected = part2Index[key]
+        filtered.append(results[:, selected])
+    filtered = np.concatenate(filtered, axis=1)
+    filtered = torch.from_numpy(filtered).float()  # T,N,3
+
+    keypoints = []
+    keypoints.append(filtered)
+    keypoints = torch.stack(keypoints, dim=0)  # 1,T,N,3
+
+    return keypoints
 
 
 def main():
+    config = loadConfig()
+    config["device"] = "cuda:0"
+    torch.cuda.set_device(config["device"])
+
+    dataset = buildDataset(config["data"])
+    vocab = dataset.vocab
+    num = len(vocab)
+    wordEmbTab = []
+    if dataset.wordEmbTab:
+        for w in vocab:
+            wordEmbTab.append(torch.from_numpy(dataset.wordEmbTab[w]))
+        wordEmbTab = torch.stack(wordEmbTab, dim=0).float().to(config["device"])
+    del vocab
+    del dataset
+
+    model = buildModel(config, num, wordEmbTab=wordEmbTab)
+    modelPath = path.join(
+        "assets",
+        str(config["data"]["num"]),
+        "best.ckpt",
+    )
+    stateDict = torch.load(modelPath, map_location="cuda")
+    loadCustomized(model, stateDict["model_state"], verbose=True)
+
     detectorModel = init_detector(
         config=detector_config,
         checkpoint=detector_ckpt,
-        device="cuda:0",
+        device=config["device"],
     )
     poseModel = init_model(
         config=pose_config,
         checkpoint=pose_ckpt,
-        device="cuda:0",
+        device=config["device"],
     )
 
-    videoArrays = loadVideo("./videos/apple.mp4")
-    frames = videoArrays.numpy().transpose(0, 2, 3, 1) * 255  # [T,H,W,C]
+    videoArrays = loadVideo("./videos/table.mp4")
+    frames = videoArrays[0].numpy().transpose(0, 2, 3, 1) * 255  # [T,H,W,3]
     frames = np.uint8(frames)
     assert frames.shape
     frames = np.split(frames, frames.shape[0], axis=0)
 
     detectionResults = detectionInference(detectorModel, frames)
-    poseResults = poseInference(poseModel, frames, detectionResults)
-    print(poseResults)
+    poseResults = poseInference(
+        poseModel, frames, detectionResults, config["data"]["use_keypoints"]
+    )
+
+    st = 64 // 4
+    end = st + 64 // 2
+
+    videos = []
+    videos.append(videoArrays)
+    videos.append(videos[-1][:, st:end, ...])
+
+    keypoints = []
+    keypoints.append(poseResults)
+    keypoints.append(keypoints[-1][:, st:end, ...])
+
+    batch = {
+        "videos": videos,
+        "keypoints": keypoints,
+    }
+
+    moveToDevice(batch, config["device"])
+
+    model.eval()
+    outputs = model(batch["videos"], batch["keypoints"])
+    print(outputs)
 
 
 if __name__ == "__main__":

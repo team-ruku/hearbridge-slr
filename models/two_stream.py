@@ -1,7 +1,7 @@
 from torch import nn
 
-from modelling.fusion import Lateral_Conn
-from modelling.S3D import S3D_backbone
+from .fusion import Lateral_Conn
+from .S3D import S3D_backbone
 
 
 class S3D_two_stream_v2(nn.Module):

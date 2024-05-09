@@ -1,20 +1,15 @@
 data:
+  num: 100
   input_streams:
     - keypoint
     - keypoint
     - rgb
     - rgb
-  keypoint_file: keypoints_hrnet_dark_coco_wholebody.pkl
   use_keypoints:
     - pose
     - mouth_half
     - hand
-  zip_file: WLASL.zip
-  word_emb_file: wlasl_word_embeddings.pkl
-  train: train.pkl
-  dev: dev.pkl
-  test: test.pkl
-  dataset_name: WLASL-100
+  word_emb_file: word.pkl
   num_output_frames: 64
   transform_cfg:
     img_size: 224

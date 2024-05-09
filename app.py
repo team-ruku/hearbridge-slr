@@ -8,7 +8,9 @@ import torch
 
 from dataset.Dataloader import build_dataloader
 from dataset.Dataset import build_dataset
-from modelling.model import build_model
+from models.model import buildModel
+
+# from modelling.model import build_model
 from utils.metrics import compute_accuracy
 from utils.misc import load_config, move_to_device, neq_load_customized, set_seed
 
@@ -23,14 +25,6 @@ def evaluation(
     vocab = dataloader.dataset.vocab
     # split = dataloader.dataset.split
     cls_num = len(vocab)
-
-    word_emb_tab = []
-    if dataloader.dataset.word_emb_tab is not None:
-        for w in vocab:
-            word_emb_tab.append(torch.from_numpy(dataloader.dataset.word_emb_tab[w]))
-        word_emb_tab = torch.stack(word_emb_tab, dim=0).float().to(cfg["device"])
-    else:
-        word_emb_tab = None
 
     if epoch is not None:
         print(
@@ -55,11 +49,9 @@ def evaluation(
             batch = move_to_device(batch, cfg["device"])
 
             forward_output = model(
-                is_train=False,
                 labels=batch["labels"],
                 sgn_videos=batch["sgn_videos"],
                 sgn_keypoints=batch["sgn_keypoints"],
-                epoch=epoch,
             )
             for k, v in forward_output.items():
                 if "_loss" in k:
@@ -183,7 +175,7 @@ if __name__ == "__main__":
     del vocab
     del dataset
 
-    model = build_model(cfg, cls_num, word_emb_tab=word_emb_tab)
+    model = buildModel(cfg, cls_num, wordEmbTab=word_emb_tab)
     load_model_path = os.path.join(
         "assets",
         cfg["data"]["dataset_name"].split("-")[0],

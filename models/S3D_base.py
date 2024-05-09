@@ -159,14 +159,7 @@ class SepConv3d(nn.Module):
             )
             x = torch.cat([x, h_idx, w_idx], dim=1)
 
-        print("===== before input")
-        print(x.shape)
-
         x = self.conv_s(x)
-
-        print("===== after input")
-        print(x.shape)
-
         x = self.bn_s(x)
         x = self.relu_s(x)
 
