@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from modelling.S3D_base import BasicConv3d, S3D_base
+from .S3D_base import BasicConv3d, S3D_base
 
 BLOCK2SIZE = {1: 64, 2: 192, 3: 480, 4: 832, 5: 1024}
 

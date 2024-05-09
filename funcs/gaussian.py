@@ -1,7 +1,7 @@
 import torch
 
 
-def genGaussian(
+def gen_gaussian_hmap_op(
     coords, raw_size=(260, 210), map_size=None, sigma=1, threshold=0, **kwargs
 ):
     # openpose version

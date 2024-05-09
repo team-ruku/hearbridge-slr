@@ -4,8 +4,8 @@ from copy import deepcopy
 import torch
 import torchvision
 
-from utils.gen_gaussian import gen_gaussian_hmap_op
-from utils.loss import LabelSmoothCE
+from funcs.gaussian import gen_gaussian_hmap_op
+from funcs.loss import LabelSmoothCE
 
 from .four_stream import S3D_four_stream
 from .Visualhead import SepConvVisualHead
