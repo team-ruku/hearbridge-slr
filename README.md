@@ -1,6 +1,15 @@
+# HearBridge Sign Language Recognition
+
+# Prerequisites
+
+1. Setup the conda environment.
 ```bash
 conda create -y -n hearbridge-slr python=3.8
 conda activate hearbridge-slr
+```
+
+2. Install requirements.
+```bash
 conda install pytorch torchvision pytorch-cuda=12.1 cuda -c pytorch -c nvidia
 conda install lintel -c conda-forge
 pip install -r requirements.txt
