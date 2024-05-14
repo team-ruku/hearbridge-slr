@@ -1,3 +1,7 @@
+import os
+import random
+
+import numpy as np
 import torch
 import yaml
 
@@ -59,3 +63,13 @@ def moveToDevice(batch, device):
         elif isinstance(v, list) and type(v[0]) == torch.Tensor:
             batch[k] = [e.to(device) for e in v]
     return batch
+
+
+def setSeed(seed: int):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)

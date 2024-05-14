@@ -7,8 +7,8 @@ import torchvision
 from funcs.gaussian import gen_gaussian_hmap_op
 from funcs.loss import LabelSmoothCE
 
-from .four_stream import S3D_four_stream
-from .Visualhead import SepConvVisualHead
+from .fourStream import S3D_four_stream
+from .visualHead import SepConvVisualHead
 
 
 class RecognitionNetwork(torch.nn.Module):

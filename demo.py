@@ -10,7 +10,7 @@ from mmdet.structures import DetDataSample
 from mmengine.registry import init_default_scope
 
 from datasets.dataset import buildDataset
-from funcs.misc import loadConfig, loadCustomized, moveToDevice
+from funcs.misc import loadConfig, loadCustomized, moveToDevice, setSeed
 from mmpose.apis import inference_topdown, init_model
 from models.model import buildModel
 
@@ -158,6 +158,7 @@ def main():
     config = loadConfig()
     config["device"] = "cuda:0"
     torch.cuda.set_device(config["device"])
+    setSeed(config["training"]["random_seed"])
 
     dataset = buildDataset(config["data"])
     vocab = dataset.vocab
@@ -190,7 +191,7 @@ def main():
         device=config["device"],
     )
 
-    videoArrays = loadVideo("./videos/table.mp4")
+    videoArrays = loadVideo("./videos/learn.mp4")
     frames = videoArrays[0].numpy().transpose(0, 2, 3, 1) * 255  # [T,H,W,3]
     frames = np.uint8(frames)
     assert frames.shape

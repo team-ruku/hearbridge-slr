@@ -1,7 +1,7 @@
 from torch import nn
 
-from .fusion import Lateral_Conn
-from .two_stream import S3D_two_stream_v2
+from .fusion import LateralConn
+from .twoStream import S3D_two_stream_v2
 
 
 class S3D_four_stream(nn.Module):
@@ -25,7 +25,7 @@ class S3D_four_stream(nn.Module):
         if flag_lateral[2]:
             self.rgb_low2high = nn.ModuleList(
                 [
-                    Lateral_Conn(
+                    LateralConn(
                         inoutchannels[i][0],
                         inoutchannels[i][1],
                         (3, 1, 1),
@@ -33,7 +33,7 @@ class S3D_four_stream(nn.Module):
                         "pose2rgb",
                         None,
                         False,
-                        adapt_first=False,
+                        adaptFirst=False,
                     )
                     for i in range(len(inoutchannels))
                 ]
@@ -41,7 +41,7 @@ class S3D_four_stream(nn.Module):
         if flag_lateral[3]:
             self.rgb_high2low = nn.ModuleList(
                 [
-                    Lateral_Conn(
+                    LateralConn(
                         inoutchannels[i][0],
                         inoutchannels[i][1],
                         (3, 1, 1),
@@ -49,7 +49,7 @@ class S3D_four_stream(nn.Module):
                         "rgb2pose",
                         None,
                         False,
-                        adapt_first=False,
+                        adaptFirst=False,
                     )
                     for i in range(len(inoutchannels))
                 ]
@@ -57,7 +57,7 @@ class S3D_four_stream(nn.Module):
         if flag_lateral[4]:
             self.pose_low2high = nn.ModuleList(
                 [
-                    Lateral_Conn(
+                    LateralConn(
                         inoutchannels[i][0],
                         inoutchannels[i][1],
                         (3, 1, 1),
@@ -65,7 +65,7 @@ class S3D_four_stream(nn.Module):
                         "pose2rgb",
                         None,
                         False,
-                        adapt_first=False,
+                        adaptFirst=False,
                     )
                     for i in range(len(inoutchannels))
                 ]
@@ -73,7 +73,7 @@ class S3D_four_stream(nn.Module):
         if flag_lateral[5]:
             self.pose_high2low = nn.ModuleList(
                 [
-                    Lateral_Conn(
+                    LateralConn(
                         inoutchannels[i][0],
                         inoutchannels[i][1],
                         (3, 1, 1),
@@ -81,7 +81,7 @@ class S3D_four_stream(nn.Module):
                         "rgb2pose",
                         None,
                         False,
-                        adapt_first=False,
+                        adaptFirst=False,
                     )
                     for i in range(len(inoutchannels))
                 ]

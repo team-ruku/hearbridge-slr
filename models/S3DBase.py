@@ -2,9 +2,9 @@ import torch
 from torch import nn
 
 
-class S3D_base(nn.Module):
+class S3DBase(nn.Module):
     def __init__(self, in_channels, use_block, coord_conv=None):
-        super(S3D_base, self).__init__()
+        super(S3DBase, self).__init__()
         base_seq = []
         coord_setting1 = coord_setting2 = None
         if coord_conv is not None:

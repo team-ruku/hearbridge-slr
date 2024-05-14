@@ -1,11 +1,10 @@
 from torch import nn
 
-from .fusion import Lateral_Conn
-from .S3D import S3D_backbone
+from .fusion import LateralConn
+from .S3D import S3DBackbone
 
 
 class S3D_two_stream_v2(nn.Module):
-    # use pyramid v2
     def __init__(
         self,
         use_block=5,
@@ -19,14 +18,14 @@ class S3D_two_stream_v2(nn.Module):
         # NOTE: need to take lateral connections into consideration
         self.cfg_pyramid = kwargs.pop("cfg_pyramid", None)
         self.use_shortcut = kwargs.pop("use_shortcut", False)
-        self.rgb_stream = S3D_backbone(
+        self.rgb_stream = S3DBackbone(
             3,
             use_block,
             freeze_block[0],
             cfg_pyramid=self.cfg_pyramid,
             use_shortcut=self.use_shortcut,
         )
-        self.pose_stream = S3D_backbone(
+        self.pose_stream = S3DBackbone(
             pose_inchannels,
             use_block,
             freeze_block[1],
@@ -80,7 +79,7 @@ class S3D_two_stream_v2(nn.Module):
             # pose2rgb
             self.rgb_stream_lateral = nn.ModuleList(
                 [
-                    Lateral_Conn(
+                    LateralConn(
                         inoutchannels[i][0],
                         inoutchannels[i][1],
                         lateral_ksize,
@@ -88,7 +87,7 @@ class S3D_two_stream_v2(nn.Module):
                         "pose2rgb",
                         lateral_variant[0],
                         lateral_interpolate,
-                        adapt_first=(
+                        adaptFirst=(
                             True
                             if "c5" in self.fusion_features
                             and i == len(inoutchannels) - 1
@@ -102,7 +101,7 @@ class S3D_two_stream_v2(nn.Module):
             # rgb2pose
             self.pose_stream_lateral = nn.ModuleList(
                 [
-                    Lateral_Conn(
+                    LateralConn(
                         inoutchannels[i][0],
                         inoutchannels[i][1],
                         lateral_ksize,
@@ -110,7 +109,7 @@ class S3D_two_stream_v2(nn.Module):
                         "rgb2pose",
                         lateral_variant[1],
                         lateral_interpolate,
-                        adapt_first=(
+                        adaptFirst=(
                             True
                             if "c5" in self.fusion_features
                             and i == len(inoutchannels) - 1

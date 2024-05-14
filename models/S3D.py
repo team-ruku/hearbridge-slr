@@ -1,15 +1,15 @@
 import torch
 from torch import nn
 
-from .S3D_base import BasicConv3d, S3D_base
+from .S3DBase import BasicConv3d, S3DBase
 
 BLOCK2SIZE = {1: 64, 2: 192, 3: 480, 4: 832, 5: 1024}
 
 
-class S3Ds(S3D_base):
+class S3D(S3DBase):
     def __init__(self, in_channel=3, use_block=5, freeze_block=0, coord_conv=None):
         self.use_block = use_block
-        super(S3Ds, self).__init__(
+        super(S3D, self).__init__(
             in_channels=in_channel, use_block=use_block, coord_conv=coord_conv
         )
         self.freeze_block = freeze_block
@@ -40,7 +40,7 @@ class S3Ds(S3D_base):
         return x
 
 
-class S3D_backbone(torch.nn.Module):
+class S3DBackbone(torch.nn.Module):
     def __init__(
         self,
         in_channel=3,
@@ -50,9 +50,9 @@ class S3D_backbone(torch.nn.Module):
         coord_conv=None,
         use_shortcut=False,
     ):
-        super(S3D_backbone, self).__init__()
+        super(S3DBackbone, self).__init__()
         self.cfg_pyramid = cfg_pyramid
-        self.backbone = S3Ds(
+        self.backbone = S3D(
             in_channel=in_channel,
             use_block=use_block,
             freeze_block=freeze_block,
